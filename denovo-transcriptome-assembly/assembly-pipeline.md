@@ -12,4 +12,8 @@ We build Shannon assemblies with version 0.0.2. At the time of our analyses, Sha
 
     python path/to/shannon.py -p 12 -o shannon_out --left trimmed_corrected_1.fasta --right trimmed_corrected.fasta
 
+# BinPacker
 
+We build BinPacker assemblies with version 1.0, using strandedness flags where appropriate (see the -m flag). A generic examaple command line for a dUTP library is as follows:
+
+    /path/to/BinPacker -s fq -p pair -m RF -l trimmed_corrected_1.fq -r trimmed_corrected_2.fq -o binpacker_out

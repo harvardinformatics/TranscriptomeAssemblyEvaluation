@@ -1,3 +1,4 @@
+import os
 import argparse
 from subprocess import Popen,PIPE
 from Bio import SeqIO
@@ -138,6 +139,10 @@ if __name__=="__main__":
     parser.add_argument('-p','--polyploid',dest='polyploid',action='store_true')
     opts = parser.parse_args()
     
+    if opts.polyploid == False:
+        if 'vcftools' not in ''.join(os.environ.values()):
+            raise Exception('vcftools not in PATH but is required for diploid samples')  
+
     assembly_fasta = open(opts.afasta,'r')
     length_dict = ExtractContigLengthFromFasta(assembly_fasta)
     

@@ -1,3 +1,4 @@
+# formerly CigarBedToOneBpResBed.py
 import os
 import argparse
 from subprocess import Popen,PIPE
@@ -142,6 +143,9 @@ if __name__=="__main__":
     if opts.polyploid == False:
         if 'vcftools' not in ''.join(os.environ.values()):
             raise Exception('vcftools not in PATH but is required for diploid samples')  
+    
+    if 'bedtools' not in ''.join(os.environ.values()):
+        raise Exception('bedtools required but not in PATH')
 
     assembly_fasta = open(opts.afasta,'r')
     length_dict = ExtractContigLengthFromFasta(assembly_fasta)

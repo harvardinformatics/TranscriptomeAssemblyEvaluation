@@ -82,7 +82,7 @@ def ConvertGenomicToSuperTscriptCoords(intersectbed):
     fout = open('supertscoords_%s' % intersectbed,'w')
     for line in fin:
         linelist = line.strip().split('\t')
-        fout.write('%s\t%s\t%s\n' % (linelist[4],int(linelist[5])-1,linelist[5]))
+        fout.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (linelist[4],int(linelist[5])-1,linelist[5],linelist[0],linelist[1],linelist[2],linelist[3]))
     fout.close() 
         
 def IntersectGmapSuperTsCoordWithDepth(supertsbed,depthbed):

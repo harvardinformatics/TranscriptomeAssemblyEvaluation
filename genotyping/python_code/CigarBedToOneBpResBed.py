@@ -130,9 +130,9 @@ def BedToVcf(bed,header):
 
 
 if __name__=="__main__": 
-    parser = argparse.ArgumentParser(description="Converts bed file with cigar string, of sequence alignment")
+    parser = argparse.ArgumentParser(description='Performs sundry format and coordinate conversions for comparing map-to-reference and map-to-SuperTranscripts genotypes from RNA-seq data')
     parser.add_argument('-i','--cigarbed_infile',dest='bedin',type=str,help='bed file with cigar string field')
-    parser.add_argument('-f','-assembly_fasta',dest='afasta',type=str,help='fasta file of de novo transcriptome assembly')
+    parser.add_argument('-f','-assembly_fasta',dest='afasta',type=str,help='fasta file of de novo transcriptome SuperTranscripts')
     parser.add_argument('-o','--bed_out',dest='outbed',type=str,help='output bed file')
     parser.add_argument('-ex','--exons_bed',dest='exons',type=str,help='merged genomic exons bed file')
     parser.add_argument('-sd','--superts_depth_bed',dest='stdepthbed',type=str,help='name of bedtools output single base resolution depth file')

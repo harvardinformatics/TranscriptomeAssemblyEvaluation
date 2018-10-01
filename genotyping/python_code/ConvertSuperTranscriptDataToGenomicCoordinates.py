@@ -88,7 +88,7 @@ def IntersectGmapSuperTsCoordWithDepth(supertsbed,depthbed):
     intersect_cmd = 'intersectBed -loj -a %s -b %s |awk \'{print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$11}\'> wdepth_%s' % (supertsbed,depthbed,supertsbed)
     intersect_proc = Popen(intersect_cmd, shell=True, stdout=PIPE, stderr=PIPE)
     inter_stdout, inter_stderr = intersect_proc.communicate()
-    return inter_stdout,inter_countstderr
+    return inter_stdout,inter_stderr
 
 def FilterVcfBySuperTsExonicSites(vcf,superexonbed):
     cmd = 'vcftools --vcf %s --recode --bed %s --out exonsonly' % (vcf,superexonbed)
@@ -110,8 +110,9 @@ def VcfToBed(vcf):
             bedout.write('%s\t%s\t%s\t%s\n' % (contig,int(position)-1, position,bedvalstring))
     bedout.close()
 
-def IntersectGenotypesGenomicPosDepth(genotype_bed,depthbed):
-    intersect_cmd = 'intersectBed -a %s -b %s > wGenomePosDepth_%s' % (depth_bed,genotype_bed,genotype_bed)
+def IntersectGenotypesGenomicPosDepth(genotype_bed,depth_bed):
+    intersect_cmd = 'intersectBed -loj -a %s -b %s > wGenomePosDepth_%s' % (genotype_bed,depth_bed,genotype_bed)
+    print intersect_cmd
     proc = Popen(intersect_cmd, shell=True, stdout=PIPE, stderr=PIPE)
     stdout, stderr = proc.communicate()
     return stdout,stderr
@@ -125,18 +126,21 @@ if __name__=="__main__":
     parser.add_argument('-ex','--exons_bed',dest='exons',type=str,help='merged genomic exons bed file')
     parser.add_argument('-sd','--superts_depth',dest='stdepthbed',type=str,help='name of bedtools output single base resolution depth file')
     parser.add_argument('-v','--vcf',dest='vcf',type=str,help='GATK filtered vcf file')
-    parser.add_argument('-p','--polyploid',dest='polyploid',action='store_true')
+    #parser.add_argument('-p','--polyploid',dest='polyploid',action='store_true')
     opts = parser.parse_args()
+    
     
     logging = open('analysis.log','w')
     
-    if opts.polyploid == False:
-        if 'vcftools' not in ''.join(os.environ.values()):
-            raise Exception('vcftools not in PATH but is required for diploid samples')  
-            logging.write('WARNING: vcftools not in PATH but is required for diploid samples\n')
+    #if opts.polyploid == False:
+        #if 'vcftools' not in ''.join(os.environ.values()):
+            #raise Exception('vcftools not in PATH but is required for diploid samples')  
+            #logging.write('WARNING: vcftools not in PATH but is required for diploid samples\n')
+    
     if 'bedtools' not in ''.join(os.environ.values()):
         raise Exception('bedtools required but not in PATH')
         logging.write('WARNING:bedtools required but not in PATH\n')
+    
     assembly_fasta = open(opts.afasta,'r')
     logging.write('building length dictionary from supertranscript assembly fasta\n')
     length_dict = ExtractContigLengthFromFasta(assembly_fasta)
@@ -166,11 +170,12 @@ if __name__=="__main__":
     callable_out,callable_err = IntersectGmapSuperTsCoordWithDepth('supertscoords_exons_%s' % opts.outbed, 'reformat_%s' % opts.stdepthbed)
 
     logging.write('filteing GATK-filtered vcf file to only contain exonic sites (in superts coords)\n')
-    if opts.polyploid == False:
-        vcffilt_out,vcffilt_err = FilterVcfBySuperTsExonicSites(opts.vcf,'supertscoords_exons_%s' % opts.outbed)
-    else:
-        VcfToBed(opts.vcf)
-        IntersectWithExons('%s.bed' % opts.vcf[:-4],'supertscoords_exons_%s' % opts.outbed)
+    #if opts.polyploid == False:
+        #vcffilt_out,vcffilt_err = FilterVcfBySuperTsExonicSites(opts.vcf,'supertscoords_exons_%s' % opts.outbed)
+    #else:
+    VcfToBed(opts.vcf)
+    IntersectWithExons('%s.bed' % opts.vcf[:-4],'supertscoords_exons_%s' % opts.outbed)
                 
     logging.write('intersecting genotypes with genomic position and coverage data\n') 
-    gtype_dp_intersect_out,gtype_dp_intersect_err=IntersectGenotypesGenomicPosDepth('supertscoords_exons_%s' % opts.vcf, 'superts_coords_exons_%s' % opts.outbed)
+    
+    gtype_dp_intersect_out,gtype_dp_intersect_err=IntersectGenotypesGenomicPosDepth('exons_%sbed' % opts.vcf[:-3], 'wdepth_supertscoords_exons_%s' % opts.outbed)

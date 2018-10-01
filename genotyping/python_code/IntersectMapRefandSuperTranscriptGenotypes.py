@@ -44,7 +44,32 @@ def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields):
     
         return ref_to_superts,superts_to_ref,superts_alleles_depth_dict,mref_gtype_dict
 
-if __name__=="__main__": 
+
+def UpdateSnpClusters(ref_to_super,super_to_ref):
+    sequence_clusters = defaultdict(list)
+    snp_number = 0
+    mappings_concat = dict(ref_to_super.items() + super_to_ref.items())
+    
+    for sequence_key in mappings_concat:
+        found = 0
+        for cluster in sequence_clusters:
+            if sequence_key in sequence_clusters[cluster]:
+                sequence_clusters[cluster] += mappings_concat[sequence_key]        
+                found += 1
+        if found == 0:
+            snp_number += 1
+            sequence_clusters['snp%s' % snp_number].append(sequence_key)
+            sequence_clusters['snp%s' % snp_number] += mappings_concat[sequence_key]
+
+    snp_id_dict = {}
+    for cluster in sequence_clusters:
+        snp_id_dict[cluster] = list(Set(sequence_clusters[cluster]))
+        snp_id_dict[cluster].sort()
+
+    return snp_id_dict
+        
+
+
     parser = argparse.ArgumentParser(description='Summarize map-to-ref and SuperTranscript genotype intersection')
     parser.add_argument('-m','--map-ref-gtypes-bed',dest='mapref',type=str,help='bed of map-to-ref genotypes')
     parser.add_argument('-s','--supertranscript-gtypes-bed',dest='superts',type=str,help='bed of supertranscript genotypes')
@@ -55,9 +80,13 @@ if __name__=="__main__":
 
     ref_to_superts,superts_to_ref,superts_alleles_depth_dict,mref_gtype_dict = CrossMapContigsToGenomes(opts.mapref,opts.superts,mapref_fields,superts_fields)
 
-    print 'ref to superts',len(ref_to_superts),ref_to_superts[ref_to_superts.keys()[0]]
-    print 'superts to ref',len(superts_to_ref),superts_to_ref[superts_to_ref.keys()[0]]
-    print 'superts alleles depth dict',len(superts_alleles_depth_dict),superts_alleles_depth_dict[superts_alleles_depth_dict.keys()[0]]
-    print 'mref gtype dict',len(mref_gtype_dict),mref_gtype_dict[mref_gtype_dict.keys()[0]]
+    print 'ref to superts',ref_to_superts[ref_to_superts.keys()[0],len(ref_to_superts),ref_to_superts[ref_to_superts.keys()[0]]
+    print 'superts to ref',superts_to_ref.keys()[0],len(superts_to_ref),superts_to_ref[superts_to_ref.keys()[0]]
+    print 'superts alleles depth dict',superts_alleles_depth_dict.keys()[0],len(superts_alleles_depth_dict),superts_alleles_depth_dict[superts_alleles_depth_dict.keys()[0]]
+    print 'mref gtype dict',mref_gtype_dict.keys()[0],len(mref_gtype_dict),mref_gtype_dict[mref_gtype_dict.keys()[0]]
 
+
+    snp_ids = UpdateSnpClusters(ref_to_superts,superts_to_ref)
+    print 'example snp ids....'
+    print snp_ids.keys()[0],snp_ids[snp_ids.keys()[0]]
 

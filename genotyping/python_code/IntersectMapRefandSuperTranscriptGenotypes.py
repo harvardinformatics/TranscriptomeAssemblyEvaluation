@@ -50,7 +50,11 @@ def UpdateSnpClusters(ref_to_super,super_to_ref):
     snp_number = 0
     mappings_concat = dict(ref_to_super.items() + super_to_ref.items())
     
+    key_count = 0
     for sequence_key in mappings_concat:
+        key_count += 1
+        if key_count%100 == 0:
+            print 'processing mref/superts mapping ...%s' % key_count
         found = 0
         for cluster in sequence_clusters:
             if sequence_key in sequence_clusters[cluster]:

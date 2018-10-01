@@ -68,7 +68,7 @@ def UpdateSnpClusters(ref_to_super,super_to_ref):
 
     return snp_id_dict
         
-
+if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description='Summarize map-to-ref and SuperTranscript genotype intersection')
     parser.add_argument('-m','--map-ref-gtypes-bed',dest='mapref',type=str,help='bed of map-to-ref genotypes')
@@ -80,7 +80,7 @@ def UpdateSnpClusters(ref_to_super,super_to_ref):
 
     ref_to_superts,superts_to_ref,superts_alleles_depth_dict,mref_gtype_dict = CrossMapContigsToGenomes(opts.mapref,opts.superts,mapref_fields,superts_fields)
 
-    print 'ref to superts',ref_to_superts[ref_to_superts.keys()[0],len(ref_to_superts),ref_to_superts[ref_to_superts.keys()[0]]
+    print 'ref to superts',ref_to_superts.keys()[0],len(ref_to_superts),ref_to_superts[ref_to_superts.keys()[0]]
     print 'superts to ref',superts_to_ref.keys()[0],len(superts_to_ref),superts_to_ref[superts_to_ref.keys()[0]]
     print 'superts alleles depth dict',superts_alleles_depth_dict.keys()[0],len(superts_alleles_depth_dict),superts_alleles_depth_dict[superts_alleles_depth_dict.keys()[0]]
     print 'mref gtype dict',mref_gtype_dict.keys()[0],len(mref_gtype_dict),mref_gtype_dict[mref_gtype_dict.keys()[0]]

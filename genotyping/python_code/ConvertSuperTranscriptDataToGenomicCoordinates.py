@@ -54,7 +54,10 @@ def ReformatSuperTsDepthBed(depthbed):
     """
     takes bedtools depth bed, which is not proper
     bed format, and converts it back to a 
-    proper bed format
+    proper bed format. The calculations here only work
+    when supertranscripts are not split into pieces
+    because only in those cases are position indices =
+    to actual contig postions
     """
     fin = open(depthbed,'r')
     fout = open('reformat_%s' % depthbed,'w')
@@ -67,15 +70,6 @@ def ReformatSuperTsDepthBed(depthbed):
     except:
        return Exception('Could not convert %s to properly formatted depth bed\n' % depthbed)
 
-def SortAndMergeBed(bed):
-    sortcmd = 'sortBed -i %s > sorted_%s' % bed
-    sortproc = Popen(sortcmd, shell=True, stdout=PIPE, stderr=PIPE)
-    sortstdout, sortstderr = sortproc.communicate()
-    mergecmd = 'mergeBed -i sorted_%s > merged_sorted_%s' % bed
-    mergeproc = Popen(mergecmd, shell=True, stdout=PIPE, stderr=PIPE)
-    mergestdout, mergestderr = mergeproc.communicate()
-    return sortstderr,mergestderr   
-    
 def ConvertGenomicToSuperTscriptCoords(intersectbed):
     fin = open(intersectbed,'r')
     fout = open('supertscoords_%s' % intersectbed,'w')
@@ -89,13 +83,6 @@ def IntersectGmapSuperTsCoordWithDepth(supertsbed,depthbed):
     intersect_proc = Popen(intersect_cmd, shell=True, stdout=PIPE, stderr=PIPE)
     inter_stdout, inter_stderr = intersect_proc.communicate()
     return inter_stdout,inter_stderr
-
-def FilterVcfBySuperTsExonicSites(vcf,superexonbed):
-    cmd = 'vcftools --vcf %s --recode --bed %s --out exonsonly' % (vcf,superexonbed)
-    print cmd
-    proc = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE) 
-    stdout, stderr = proc.communicate()
-    return stdout,stderr
 
 def VcfToBed(vcf):
     vcfhead = open('%s.header' % vcf, 'w')
@@ -111,7 +98,7 @@ def VcfToBed(vcf):
     bedout.close()
 
 def IntersectGenotypesGenomicPosDepth(genotype_bed,depth_bed):
-    intersect_cmd = 'intersectBed -loj -a %s -b %s > wGenomePosDepth_%s' % (genotype_bed,depth_bed,genotype_bed)
+    intersect_cmd = 'intersectBed -loj -a %s -b %s > wGenomePosAndSuperTsDepth_%s' % (genotype_bed,depth_bed,genotype_bed)
     print intersect_cmd
     proc = Popen(intersect_cmd, shell=True, stdout=PIPE, stderr=PIPE)
     stdout, stderr = proc.communicate()
@@ -126,28 +113,25 @@ if __name__=="__main__":
     parser.add_argument('-ex','--exons_bed',dest='exons',type=str,help='merged genomic exons bed file')
     parser.add_argument('-sd','--superts_depth',dest='stdepthbed',type=str,help='name of bedtools output single base resolution depth file')
     parser.add_argument('-v','--vcf',dest='vcf',type=str,help='GATK filtered vcf file')
-    #parser.add_argument('-p','--polyploid',dest='polyploid',action='store_true')
     opts = parser.parse_args()
-    
     
     logging = open('analysis.log','w')
     
-    #if opts.polyploid == False:
-        #if 'vcftools' not in ''.join(os.environ.values()):
-            #raise Exception('vcftools not in PATH but is required for diploid samples')  
-            #logging.write('WARNING: vcftools not in PATH but is required for diploid samples\n')
-    
+    ##### check if bedtools in path ######
     if 'bedtools' not in ''.join(os.environ.values()):
         raise Exception('bedtools required but not in PATH')
-        logging.write('WARNING:bedtools required but not in PATH\n')
+        logging.write('EXCEPTION:bedtools required but not in PATH\n')
     
-    assembly_fasta = open(opts.afasta,'r')
+    ###### import supertranscript fasta and get contig lengths ######
     logging.write('building length dictionary from supertranscript assembly fasta\n')
+    assembly_fasta = open(opts.afasta,'r')
     length_dict = ExtractContigLengthFromFasta(assembly_fasta)
     
+    ###### converting coverageBed -d outputs into a proper bed format for downstream ops ######  
     logging.write('transforming supertranscript coverage depth  into proper bed format\n')
     depth_fix = ReformatSuperTsDepthBed(opts.stdepthbed)
     
+    ###### convert supertranscript mappings to genome into genomic coordinate bed file, retaining superts coords as values ######
     logging.write('creating single base resolution bed file of superts mappings to genome, with superts coords as values\n')
     bedin = open(opts.bedin,'r')
     bedout = open(opts.outbed,'w')
@@ -158,24 +142,27 @@ if __name__=="__main__":
             bedout.write(coordinate)
     bedout.close()
 
+    ##### Filtering supertcript genome postion mappings on genomic exons ##### 
     logging.write('intersecting single bp bed of superts mappings with genomic exons\n')
     intersectout,intersecterr = IntersectWithExons(opts.outbed,opts.exons)
     if intersecterr != '':
         print intersecterr
-   
+    
+    ###### convert exon filtered bed (in genomic coordinates) gack to supertranscript coordinates #####
     logging.write('converting the exon-intersect bed of superts genomic mappings back to supertranscript coordinates\n')
     ConvertGenomicToSuperTscriptCoords('exons_%s' % opts.outbed)
-
+    
+    ###### left joining supertranscript read depth to supertranscript exon intervals #####
     logging.write('left joining superts coverage to supertranscript exons intervals,in superts coords\n')
     callable_out,callable_err = IntersectGmapSuperTsCoordWithDepth('supertscoords_exons_%s' % opts.outbed, 'reformat_%s' % opts.stdepthbed)
 
-    logging.write('filteing GATK-filtered vcf file to only contain exonic sites (in superts coords)\n')
-    #if opts.polyploid == False:
-        #vcffilt_out,vcffilt_err = FilterVcfBySuperTsExonicSites(opts.vcf,'supertscoords_exons_%s' % opts.outbed)
-    #else:
+    ###### Convert GATK-filtered vcf for SuperTranscripts to bed, and extract exonic interval genotypes #####
+    logging.write('filtering GATK-filtered vcf file to only contain exonic sites (in superts coords)\n')
+    
     VcfToBed(opts.vcf)
     IntersectWithExons('%s.bed' % opts.vcf[:-4],'supertscoords_exons_%s' % opts.outbed)
-                
+    
+    ####### Intersect SuperTranscript genotypes with genomic position and coverage data #####            
     logging.write('intersecting genotypes with genomic position and coverage data\n') 
     
     gtype_dp_intersect_out,gtype_dp_intersect_err=IntersectGenotypesGenomicPosDepth('exons_%sbed' % opts.vcf[:-3], 'wdepth_supertscoords_exons_%s' % opts.outbed)

@@ -19,10 +19,15 @@ def GenotypeLineParse(line,fields):
         alleles = CollapseGenotype(line_dict['ref'],line_dict['alt'],gtype_dict)
         return line_dict,gtype_dict,alleles
 
-def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields):
+def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields,maprefcovbed):
         ref_to_superts = defaultdict(list)
         superts_to_ref = defaultdict(list)
-
+        
+        mapref_covdict = {} 
+        fopen=open(maprefcovbed,'r')
+        for line in fopen:
+            linelist=line.strip().split()
+            mapref_covdict['%s:%s' % (linelist[0],int(linelist[1])+int(linelist[3]))]=linelist[4]
         mrin = open(maprefbed,'r')    
         mref_gtype_dict = {}
         superin =  open(supertsbed,'r')
@@ -38,7 +43,7 @@ def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields):
         for line in mrin:
             linedict,gtypedict,alleles = GenotypeLineParse(line,mreffields)
             chrompos = '%s:%s' % (linedict['gchrom'],linedict['gpos'])
-            mref_gtype_dict[chrompos] = {'alleles' : alleles}
+            mref_gtype_dict[chrompos] = {'alleles' : alleles, 'depth':mapref_covdict[chrompos]}
             if chrompos not in ref_to_superts:
                 ref_to_superts[chrompos] = 'NA'
     
@@ -77,12 +82,13 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Summarize map-to-ref and SuperTranscript genotype intersection')
     parser.add_argument('-m','--map-ref-gtypes-bed',dest='mapref',type=str,help='bed of map-to-ref genotypes')
     parser.add_argument('-s','--supertranscript-gtypes-bed',dest='superts',type=str,help='bed of supertranscript genotypes')
+    parser.add_argument('-mrc','--mapref-coverage-bed',dest='maprefcov',type=str,help='mapref raw coverageBed -d bed')
     opts = parser.parse_args()
 
     superts_fields = ['gchrom','gposzero','gpos','gstrand','depth','contigid','cposzero','cpos','id','ref','alt','qual','filter','info','gtformats','gtdata']
     mapref_fields = ['gchrom','gposzero','gpos','ref','alt','qual','filter','info','gtformats','gtdata']
 
-    ref_to_superts,superts_to_ref,superts_alleles_depth_dict,mref_gtype_dict = CrossMapContigsToGenomes(opts.mapref,opts.superts,mapref_fields,superts_fields)
+    ref_to_superts,superts_to_ref,superts_alleles_depth_dict,mref_gtype_dict = CrossMapContigsToGenomes(opts.mapref,opts.superts,mapref_fields,superts_fields,opts.maprefcov)
 
     print 'ref to superts',ref_to_superts.keys()[0],len(ref_to_superts),ref_to_superts[ref_to_superts.keys()[0]]
     print 'superts to ref',superts_to_ref.keys()[0],len(superts_to_ref),superts_to_ref[superts_to_ref.keys()[0]]

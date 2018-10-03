@@ -1,3 +1,4 @@
+#from Bio import SeqIO
 import argparse
 from collections import defaultdict
 from sets import Set
@@ -8,16 +9,16 @@ def CollapseGenotype(ref_allele,alt_allele_string,genotype_dictionary):
         for i in range(len(alt_allele_list)):
             IntToNucleotideMap[str(i+1)] = alt_allele_list[i]
         genotype_integers = Set(genotype_dictionary['GT'].split('/'))
-        gtypes  = []
+        alleles  = []
         for integer in genotype_integers:
-            gtypes.append(IntToNucleotideMap[integer])
-        return gtypes
+            alleles.append(IntToNucleotideMap[integer])
+        return IntToNucleotideMap['0'],alleles
         
 def GenotypeLineParse(line,fields):
         line_dict = dict(zip(fields,line.strip().split()))
         gtype_dict = dict(zip(line_dict['gtformats'].split(':'),line_dict['gtdata'].split(':')))
-        alleles = CollapseGenotype(line_dict['ref'],line_dict['alt'],gtype_dict)
-        return line_dict,gtype_dict,alleles
+        refallele,alleles =CollapseGenotype(line_dict['ref'],line_dict['alt'],gtype_dict)
+        return line_dict,gtype_dict,alleles,refallele
 
 def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields,maprefcovbed):
         ref_to_superts = defaultdict(list)
@@ -32,18 +33,19 @@ def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields,maprefc
         mref_gtype_dict = {}
         superin =  open(supertsbed,'r')
 
-        superts_alleles_depth_dict = {}
+        superts_alleles_depth_dict = defaultdict(list) # need to do this bec ind genome positions may have more than 1 gtype
 
         for line in superin:
-            linedict,gtypedict,alleles = GenotypeLineParse(line,superfields)
+            linedict,gtypedict,alleles,ref_allele = GenotypeLineParse(line,superfields)
             ref_to_superts['%s:%s' % (linedict['gchrom'],linedict['gpos'])].append('%s:%s' % (linedict['contigid'],linedict['cpos']))
             superts_to_ref['%s:%s' % (linedict['contigid'],linedict['cpos'])].append('%s:%s' % (linedict['gchrom'],linedict['gpos']))
-            superts_alleles_depth_dict['%s:%s' % (linedict['gchrom'],linedict['gpos'])] = {'alleles' : alleles ,'depth' : linedict['depth']}
+            # the line below stores all superts allele info for all corresponding genomic positions
+            superts_alleles_depth_dict['%s:%s' % (linedict['gchrom'],linedict['gpos'])].append({'refallele': ref_allele,'alleles' : alleles ,'depth' : linedict['depth']})
 
         for line in mrin:
-            linedict,gtypedict,alleles = GenotypeLineParse(line,mreffields)
+            linedict,gtypedict,alleles,ref_allele = GenotypeLineParse(line,mreffields)
             chrompos = '%s:%s' % (linedict['gchrom'],linedict['gpos'])
-            mref_gtype_dict[chrompos] = {'alleles' : alleles, 'depth':mapref_covdict[chrompos]}
+            mref_gtype_dict[chrompos] = {'refallele':ref_allele,'alleles' : alleles, 'depth':mapref_covdict[chrompos]}
             if chrompos not in ref_to_superts:
                 ref_to_superts[chrompos] = 'NA'
     
@@ -76,6 +78,42 @@ def UpdateSnpClusters(ref_to_super,super_to_ref):
         snp_id_dict[cluster].sort()
 
     return snp_id_dict
+
+
+def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,outfile='test.tsv'):
+    """
+    refalleles == dict w/ refsnp pos as key, dict as val, with alleles and depth key-val pairs
+    supertsalleles == same as for refalleles but each genomic position has as value a list of dictionaries denoting alleles and depths
+    """
+    table_out = open(outfile,'w')
+    table_out.write('snpid\tgenomicpositions\trefnucleotides\tmaprefalleles\tsupertsalleles\n')
+    for snpid in snp_id_dict:
+        for genotype_position in snp_id_dict[snpid]:
+            mapref_alleles = Set()
+            ref_alleles=Set()
+            #ref_allele_depth = defaultdict(list)
+            superts_alleles = Set()
+            #superts_allele_depth = defaultdict(list)
+            genomic_positions = Set()
+            superts_positions = Set()
+            if 'TRINITY' in genotype_position:
+                superts_positions.add(genotype_position)
+                for allele_dict in supertsalleles[genotype_position]:
+                    for allele in allele_dict['alleles']:
+                        superts_alleles.add(allele)
+            else:
+                genomic_positions.add(genotype_position) # this deals with multi-mapping of supertranscripts to genome allowing for > 1 genomic position
+                for allele in refalleles[genotype_position]['alleles']:
+                    mapref_alleles.add(allele)
+                    ref_alleles.add(refalleles[genotype_position]['refallele'])
+        
+        fout.write('%s\t%s\t%s\t%s\t%s\t%s\n' % (snpid,';'.join(genomic_positions),';'.join(superts_positions),';'.join(ref_alleles),';'.join(mapref_alleles),';'.join(superts_alleles)))
+
+    fout.close()
+            
+        
+
+
         
 if __name__=="__main__":
 
@@ -83,8 +121,9 @@ if __name__=="__main__":
     parser.add_argument('-m','--map-ref-gtypes-bed',dest='mapref',type=str,help='bed of map-to-ref genotypes')
     parser.add_argument('-s','--supertranscript-gtypes-bed',dest='superts',type=str,help='bed of supertranscript genotypes')
     parser.add_argument('-mrc','--mapref-coverage-bed',dest='maprefcov',type=str,help='mapref raw coverageBed -d bed')
+    parser.add_argument('-o','--tsv_outfile',dest='tableout',type=str,help='output of alleles and positions by superts and mapref')
     opts = parser.parse_args()
-
+    
     superts_fields = ['gchrom','gposzero','gpos','gstrand','depth','contigid','cposzero','cpos','id','ref','alt','qual','filter','info','gtformats','gtdata']
     mapref_fields = ['gchrom','gposzero','gpos','ref','alt','qual','filter','info','gtformats','gtdata']
 
@@ -99,4 +138,4 @@ if __name__=="__main__":
     snp_ids = UpdateSnpClusters(ref_to_superts,superts_to_ref)
     print 'example snp ids....'
     print snp_ids.keys()[0],snp_ids[snp_ids.keys()[0]]
-
+    BuildSnpTableFromSnpClusters(snp_ids,mref_gtype_dict,superts_alleles_depth,outfile=opts.tableout)

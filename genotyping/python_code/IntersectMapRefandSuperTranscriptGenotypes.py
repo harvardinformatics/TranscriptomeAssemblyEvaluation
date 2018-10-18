@@ -28,59 +28,66 @@ def BuildCovDict(maprefcovbed):
         mapref_covdict['%s:%s' % (linelist[0],int(linelist[1])+int(linelist[3]))]=linelist[4]
     return mapref_covdict
 
+def MergeClusters(cluster_dict):
+    popped_ids = []
+    ids = cluster_dict.keys()
+    ids.sort()
+    for i in range(len(ids)):
+        for j in range(len(ids)):
+            if i != j and ids[i] not in popped_ids and ids[j] not in popped_ids:
+                found = 0
+                for position in cluster_dict[ids[j]]:
+                    if position in cluster_dict[ids[i]]:
+                        found +=1
+                if found > 0:
+                    cluster_dict[ids[i]] = cluster_dict[ids[i]].union(cluster_dict[ids[j]])
+                    cluster_dict.pop(ids[j])
+                    popped_ids.append(ids[j])
+
+    return cluster_dict
+        
+
 def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields,maprefcovdict):
-        ref_to_superts = defaultdict(list)
-        superts_to_ref = defaultdict(list)
-        mrin = open(maprefbed,'r')    
-        mref_gtype_dict = {}
-        superin =  open(supertsbed,'r')
+    mrin = open(maprefbed,'r') 
+    superin =  open(supertsbed,'r')
+   
+    mref_gtype_dict = {}
+    false_negative_dict = {}
+    sequence_clusters = {}
+    sequence_clusters = {}
+        
+    ref_to_superts = defaultdict(list)
+    
+    cluster_counter = 0
+    superts_alleles_depth_dict = defaultdict(list) # need to do this bec ind genome positions may have more than 1 gtype
+        
+    for line in superin:
+        linedict,gtypedict,alleles,ref_allele = GenotypeLineParse(line,superfields)
+        superts_alleles_depth_dict['%s:%s' % (linedict['contigid'],linedict['cpos'])].append({'refallele': ref_allele,'alleles' : alleles ,'depth' : linedict['depth']})
+        ref_to_superts['%s:%s' % (linedict['gchrom'],linedict['gpos'])].append('%s:%s' % (linedict['contigid'],linedict['cpos'])) 
 
-        superts_alleles_depth_dict = defaultdict(list) # need to do this bec ind genome positions may have more than 1 gtype
-
-        for line in superin:
-            linedict,gtypedict,alleles,ref_allele = GenotypeLineParse(line,superfields)
-            ref_to_superts['%s:%s' % (linedict['gchrom'],linedict['gpos'])].append('%s:%s' % (linedict['contigid'],linedict['cpos']))
-            superts_to_ref['%s:%s' % (linedict['contigid'],linedict['cpos'])].append('%s:%s' % (linedict['gchrom'],linedict['gpos']))
-            # the line below stores all superts allele info for all corresponding genomic positions
-            superts_alleles_depth_dict['%s:%s' % (linedict['contigid'],linedict['cpos'])].append({'refallele': ref_allele,'alleles' : alleles ,'depth' : linedict['depth']})
-
-        false_negative_dict = {}
-        for line in mrin:
-            linedict,gtypedict,alleles,ref_allele = GenotypeLineParse(line,mreffields)
-            chrompos = '%s:%s' % (linedict['gchrom'],linedict['gpos'])
-            mref_gtype_dict[chrompos] = {'refallele':ref_allele,'alleles' : alleles, 'depth':maprefcovdict[chrompos]}
-            if chrompos not in ref_to_superts:
-                false_negative_dict[chrompos] = {'refallele':ref_allele,'alleles' : alleles, 'depth':maprefcovdict[chrompos]}
-        return ref_to_superts,superts_to_ref,superts_alleles_depth_dict,mref_gtype_dict,false_negative_dict
-
-
-def UpdateSnpClusters(ref_to_super,super_to_ref):
-    sequence_clusters = defaultdict(list)
-    snp_number = 0
-    mappings_concat = dict(ref_to_super.items() + super_to_ref.items())
-    print 'total # of mappings to process: %s' % len(mappings_concat) 
-    key_count = 0
-    for sequence_key in mappings_concat:
-        key_count += 1
-        if key_count%10000 == 0:
-            print 'processing mref/superts mapping ...%s' % key_count
+        positions = ['%s:%s' % (linedict['gchrom'],linedict['gpos']),'%s:%s' % (linedict['contigid'],linedict['cpos'])]
         found = 0
-        for cluster in sequence_clusters:
-            if sequence_key in sequence_clusters[cluster]:
-                sequence_clusters[cluster] += mappings_concat[sequence_key]        
-                found += 1
+        for clusterkey in sequence_clusters:
+            for position in positions:
+                if position in sequence_clusters[clusterkey]:
+                    sequence_clusters[clusterkey] = sequence_clusters[clusterkey].union(positions) 
+                    found += 1
+
         if found == 0:
-            snp_number += 1
-            sequence_clusters['snp%s' % snp_number].append(sequence_key)
-            sequence_clusters['snp%s' % snp_number] += mappings_concat[sequence_key]
+            cluster_counter +=1
+            sequence_clusters['snp%s' % cluster_counter]=Set(positions)
+    false_negative_dict = {}
+    for line in mrin:
+        linedict,gtypedict,alleles,ref_allele = GenotypeLineParse(line,mreffields)
+        chrompos = '%s:%s' % (linedict['gchrom'],linedict['gpos'])
+        mref_gtype_dict[chrompos] = {'refallele':ref_allele,'alleles' : alleles, 'depth':maprefcovdict[chrompos]}
+        if chrompos not in ref_to_superts:
+            false_negative_dict[chrompos] = {'refallele':ref_allele,'alleles' : alleles, 'depth':maprefcovdict[chrompos]}
 
-    snp_id_dict = {}
-    for cluster in sequence_clusters:
-        snp_id_dict[cluster] = list(Set(sequence_clusters[cluster]))
-        snp_id_dict[cluster].sort()
+    sequence_clusters_merged=MergeClusters(sequence_clusters)
 
-    return sequence_clusters,snp_id_dict
-
+    return sequence_clusters_merged,superts_alleles_depth_dict,mref_gtype_dict,false_negative_dict
 
 def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fasta_dict,mref_covdict,false_negative_dict,outfile='test.tsv'):
     """
@@ -139,7 +146,6 @@ if __name__=="__main__":
 
     genome_dict=SeqIO.to_dict(SeqIO.parse(opts.genome, "fasta"))
     mapref_cov_dict=BuildCovDict(opts.maprefcov)
-    ref_to_superts,superts_to_ref,superts_alleles_depth_dict,mref_gtype_dict,false_negative_dict = CrossMapContigsToGenomes(opts.mapref,opts.superts,mapref_fields,superts_fields,mapref_cov_dict)
+    snp_clusters,superts_alleles_depth_dict,mref_gtype_dict,false_negative_dict = CrossMapContigsToGenomes(opts.mapref,opts.superts,mapref_fields,superts_fields,mapref_cov_dict)
    
-    clusters,snp_ids = UpdateSnpClusters(ref_to_superts,superts_to_ref)
-    BuildSnpTableFromSnpClusters(snp_ids,mref_gtype_dict,superts_alleles_depth_dict,genome_dict,mapref_cov_dict,false_negative_dict,outfile=opts.tableout)
+    BuildSnpTableFromSnpClusters(snp_clusters,mref_gtype_dict,superts_alleles_depth_dict,genome_dict,mapref_cov_dict,false_negative_dict,outfile=opts.tableout)

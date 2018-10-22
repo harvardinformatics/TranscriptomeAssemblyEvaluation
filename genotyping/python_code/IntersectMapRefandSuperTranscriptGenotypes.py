@@ -3,6 +3,14 @@ import argparse
 from collections import defaultdict
 from sets import Set
 
+def ReverseComplement(allele):
+    rev_dict={'A':'T','T':'A','G':'C','C':'G'}
+    reverse_seq = allele[::-1]
+    revcomp_seq = ''
+    for base in reverse_seq:
+        revcomp_seq+=rev_dict[base]
+    return revcomp_seq
+
 def CollapseGenotype(ref_allele,alt_allele_string,genotype_dictionary):
         IntToNucleotideMap = {'0':ref_allele}
         alt_allele_list=alt_allele_string.split(',')
@@ -63,6 +71,10 @@ def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields,maprefc
         
     for line in superin:
         linedict,gtypedict,alleles,ref_allele = GenotypeLineParse(line,superfields)
+        if linedict['gstrand'] == '-':
+            ref_allele = ReverseComplement(ref_allele)
+            alleles = [ReverseComplement(allele) for allele in alleles]
+          
         superts_alleles_depth_dict['%s:%s' % (linedict['contigid'],linedict['cpos'])].append({'refallele': ref_allele,'alleles' : alleles ,'depth' : linedict['depth']})
         ref_to_superts['%s:%s' % (linedict['gchrom'],linedict['gpos'])].append('%s:%s' % (linedict['contigid'],linedict['cpos'])) 
 

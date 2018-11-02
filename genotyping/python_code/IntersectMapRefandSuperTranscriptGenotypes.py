@@ -62,7 +62,6 @@ def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields,maprefc
     mref_gtype_dict = {}
     false_negative_dict = {}
     sequence_clusters = {}
-    sequence_clusters = {}
         
     ref_to_superts = defaultdict(list)
     
@@ -74,8 +73,8 @@ def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields,maprefc
         if linedict['gstrand'] == '-':
             ref_allele = ReverseComplement(ref_allele)
             alleles = [ReverseComplement(allele) for allele in alleles]
-          
-        superts_alleles_depth_dict['%s:%s' % (linedict['contigid'],linedict['cpos'])].append({'refallele': ref_allele,'alleles' : alleles ,'depth' : linedict['depth']})
+        allele_depths = [depth for depth in gtypedict['AD'].split(',')]      
+        superts_alleles_depth_dict['%s:%s' % (linedict['contigid'],linedict['cpos'])].append({'allele_depths': allele_depths,'refallele': ref_allele,'alleles' : alleles ,'depth' : linedict['depth']})
         ref_to_superts['%s:%s' % (linedict['gchrom'],linedict['gpos'])].append('%s:%s' % (linedict['contigid'],linedict['cpos'])) 
 
         positions = ['%s:%s' % (linedict['gchrom'],linedict['gpos']),'%s:%s' % (linedict['contigid'],linedict['cpos'])]
@@ -93,9 +92,10 @@ def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields,maprefc
     for line in mrin:
         linedict,gtypedict,alleles,ref_allele = GenotypeLineParse(line,mreffields)
         chrompos = '%s:%s' % (linedict['gchrom'],linedict['gpos'])
-        mref_gtype_dict[chrompos] = {'refallele':ref_allele,'alleles' : alleles, 'depth':maprefcovdict[chrompos]}
+        allele_depths = [depth for depth in gtypedict['AD'].split(',')]
+        mref_gtype_dict[chrompos] = {'allele_depths':allele_depths,'refallele':ref_allele,'alleles' : alleles, 'depth':maprefcovdict[chrompos]}
         if chrompos not in ref_to_superts:
-            false_negative_dict[chrompos] = {'refallele':ref_allele,'alleles' : alleles, 'depth':maprefcovdict[chrompos]}
+            false_negative_dict[chrompos] = {'allele_depths': allele_depths,'refallele':ref_allele,'alleles' : alleles, 'depth':maprefcovdict[chrompos]}
 
     sequence_clusters_merged=MergeClusters(sequence_clusters)
 
@@ -107,36 +107,58 @@ def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fa
     supertsalleles == same as for refalleles but each genomic position has as value a list of dictionaries denoting alleles and depths
     """
     table_out = open(outfile,'w')
-    table_out.write('snpid\tgenomicpositions\tsupertspositions\trefnucleotides\tmaprefalleles\tsupertsalleles\tmaprefcov\n')
+    table_out.write('snpid\tgenomicpositions\tsupertspositions\tmapref_ref\tmaprefalleles\tsuperts_ref\tsupertsalleles\tmaprefcov\tmapref_ad\tsuperts_ad\n')
     for snpid in snp_id_dict:
-        mapref_alleles_set = Set()
-        ref_alleles_set=Set()
+        
+        ## tracking reference sequence alleles for each method
+        mapref_ref_alleles_set=Set()
+        sts_ref_alleles_set=Set()
+        
+        # tracking total coverage in mapref approach
         mapref_coverage = []
+        
+        ## tracking detected alleles in each method
+        mapref_alleles_set = Set()
         superts_alleles_set = Set()
+
+        ## tracking positional info
         genomic_positions = Set()
         superts_positions = Set()
+
+        ## tracking allele depths
+        mapref_ad = Set()
+        superts_ad = Set()
+
         for genotype_position in snp_id_dict[snpid]:
             if 'TRINITY' in genotype_position:
                 superts_positions.add(genotype_position)
+                print 'length of supertsalleles[genotype_position]',len(supertsalleles[genotype_position])
                 for allele_dict in supertsalleles[genotype_position]:
                     for allele in allele_dict['alleles']:
                         superts_alleles_set.add(allele)
+                    sts_ref_alleles_set.add(allele_dict['refallele'])                     
+                ad_string = '%s:%s' % (allele_dict['allele_depths'][0],','.join(allele_dict['allele_depths'][1:]))     
+                superts_ad.add(ad_string)
             else:
                 genomic_positions.add(genotype_position) # this deals with multi-mapping of supertranscripts to genome allowing for > 1 genomic position
                 if genotype_position in refalleles:
                     for allele in refalleles[genotype_position]['alleles']:
                         mapref_alleles_set.add(allele)
-                        ref_alleles_set.add(refalleles[genotype_position]['refallele'])
+                    mapref_ref_alleles_set.add(refalleles[genotype_position]['refallele'])
                     mapref_coverage.append(mref_covdict[genotype_position])
+                    ad_string = '%s:%s' % (allele_dict['allele_depths'][0],','.join(allele_dict['allele_depths'][1:]))
+                    mapref_ad.add(ad_string)
                 else:
                     mapref_alleles_set.add('NA')
                     chrom = genotype_position.split(':')[0]
                     pos = int(genotype_position.split(':')[1])
-                    ref_alleles_set.add(str(genome_fasta_dict[chrom][pos-1]))
+                    mapref_ref_alleles_set.add(str(genome_fasta_dict[chrom][pos-1]))
                     mapref_coverage.append(mref_covdict[genotype_position])
-        table_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (snpid,';'.join(genomic_positions),';'.join(superts_positions),';'.join(ref_alleles_set),';'.join(mapref_alleles_set),';'.join(superts_alleles_set),';'.join(mapref_coverage)))
+                    mapref_ad.add('NA')
+
+        table_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (snpid,';'.join(genomic_positions),';'.join(superts_positions),';'.join(mapref_ref_alleles_set),';'.join(mapref_alleles_set),';'.join(sts_ref_alleles_set),';'.join(superts_alleles_set),';'.join(mapref_coverage),';'.join(mapref_ad),';'.join(superts_ad)))
     for pos in false_negative_dict:
-        table_out.write('genomic%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (pos,pos,'NA',false_negative_dict[pos]['refallele'],';'.join(false_negative_dict[pos]['alleles']),'NA',false_negative_dict[pos]['depth']))
+        table_out.write('genomic%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (pos,pos,'NA',false_negative_dict[pos]['refallele'],';'.join(false_negative_dict[pos]['alleles']),'NA','NA',false_negative_dict[pos]['depth'],';'.join(mapref_ad),'NA'))
     table_out.close()
             
         

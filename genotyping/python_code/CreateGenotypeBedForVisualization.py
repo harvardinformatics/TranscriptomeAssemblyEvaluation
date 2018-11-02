@@ -1,6 +1,6 @@
 import argparse
 from sets import Set
-from IntersectMapRefandSuperTranscriptGenotypes import GenotypeLineParse,CollapseGenotype
+from IntersectMapRefandSuperTranscriptGenotypes import ReverseComplement,GenotypeLineParse,CollapseGenotype
 
 
 if __name__=="__main__":
@@ -24,6 +24,12 @@ if __name__=="__main__":
         
     for line in gtypes:
         linedict,gtypedict,alleles,ref_allele = GenotypeLineParse(line,opts.fields)
+        if opts.superts == True and linedict['gstrand'] == '-':
+            ref_allele = ReverseComplement(ref_allele)
+            revcomp_alleles = []
+            for allele in alleles:
+                revcomp_alleles.append(ReverseComplement(allele))
+            alleles = revcomp_alleles
         fout.write('%s\t%s\t%s\t%s|%s\n' % (linedict['gchrom'],linedict['gposzero'],linedict['gpos'],ref_allele,';'.join(alleles)))
         
     fout.close()

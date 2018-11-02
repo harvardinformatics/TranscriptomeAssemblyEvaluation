@@ -18,7 +18,7 @@ def ParseBedWithCigar(bedline,keys=None):
 
 def ParseCigarToSingleBaseQueryCoordinates(bedline_dict,lengthdict):
     integers = '0123456789'
-    query_consume_flags = ['M','I','S','=','X']
+    query_consume_flags = ['M','I','H','S','=','X']
     writeables = ['M','=','X']
     strand_dict = {'+': 0,'-': 1}
     interval_length = ''
@@ -30,7 +30,7 @@ def ParseCigarToSingleBaseQueryCoordinates(bedline_dict,lengthdict):
         if character in integers:
             interval_length+=character
         else:
-            if character in query_consume_flags:
+            if character in query_consume_flags and character not in ['H','S','I']:
                 for i in range(int(interval_length)):
                     bed_intervals.append('%s\t%s\t%s\t%s\t%s\t%s\n' % (bedline_dict['target'],target_position,target_position+1,bedline_dict['strand'],bedline_dict['query'],query_position))
                     if bedline_dict['strand'] == '+':
@@ -38,6 +38,12 @@ def ParseCigarToSingleBaseQueryCoordinates(bedline_dict,lengthdict):
                     else:
                         query_position-=1
                     target_position+=1
+
+            elif character in query_consume_flags and character in ['H','S','I']:
+                if bedline_dict['strand'] =='+':
+                    query_position += int(interval_length)
+                else:
+                    query_position = query_position - int(interval_length)
             else:
                 target_position+=int(interval_length)
             interval_length = '' 

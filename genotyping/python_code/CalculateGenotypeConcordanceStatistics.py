@@ -40,7 +40,7 @@ def CalculateMetrics(filehandle):
         'fp_hets': [0,0],
         'fn': [0,0],
         'fn_hets': [0,0],
-        'error': [0,0],
+        'error_rate': [0,0],
         'specificity': [0,0],
         'snv2indel': [0,0],
         'allele_incl': [0,0],
@@ -50,9 +50,9 @@ def CalculateMetrics(filehandle):
 
 
     for line in filehandle:
-        linedict = dict(zip(fields,line.strip().split('\t')
-        genomic_positions = len(linedict['genomicpositions'].split(';')
-        superts_positions = len(linedict['supertspositions'].split(';') 
+        linedict = dict(zip(fields,line.strip().split('\t')))
+        genomic_positions = len(linedict['genomicpositions'].split(';'))
+        superts_positions = len(linedict['supertspositions'].split(';')) 
         maprefalleles = linedict['maprefalleles'].split(';')
         maprefalleles.sort()
         supertsalleles = linedict['supertsalleles'].split(';')
@@ -61,9 +61,9 @@ def CalculateMetrics(filehandle):
         #### concordant ####
         if maprefalleles == supertsalleles:
             metric_dict['recall'][0]+=1 ; metric_dict['recall'][1]+=1
-            metric_dict['specificity'[[0]+=1 ; metric_dict['specificity'][1]+=1
+            metric_dict['specificity'][0]+=1 ; metric_dict['specificity'][1]+=1
             metric_dict['error_rate'][1]+=1
-            metric_diot['fp'][1]+=1
+            metric_dict['fp'][1]+=1
             metric_dict['fn'][1]+=1
 
             if len(maprefalleles) > 1:
@@ -84,8 +84,8 @@ def CalculateMetrics(filehandle):
         elif maprefalleles == ['NA']:
             metric_dict['specificity'][1]+=1                 
             metric_dict['fp'][0]+=1 ; metric_dict['fp'][1]+=1
-            metric_dict['error'][0]+=1 ; metric_diot['error'][1]+=1
-            if len(superts_positions) > 1:
+            metric_dict['error_rate'][0]+=1 ; metric_dict['error_rate'][1]+=1
+            if superts_positions > 1:
                 metric_dict['multi_perror'][0]+=1 ; metric_dict['multi_perror'][1]+=1
             else:
                 metric_dict['multi_perror'][1]+=1
@@ -121,7 +121,7 @@ def CalculateMetrics(filehandle):
             if included_count > 0:
                 metric_dict['allele_incl'][0]+=1 ; metric_dict['allele_incl'][1]+=1
             
-            if len(superts_positions) > 1:
+            if superts_positions > 1:
                 metric_dict['multi_perror'][0]+=1 ; metric_dict['multi_perror'][1]+=1
             else:
                 metric_dict['multi_perror'][1]+=1
@@ -139,8 +139,19 @@ def CalculateMetrics(filehandle):
             
             if max(mapref_allele_lengths) == 1 and max(superts_allele_lengths) > 1:
                 metric_dict['snv2indel'][0]+=1 ; metric_dict['snv2indel'][1]+=1
+    return metric_dict
 
 if __name__=="__main__": 
     parser = argparse.ArgumentParser(description='Converts map-to-ref vcf file from RNA-seq data to exonic genotypes in bed format')
     parser.add_argument('-gt','--gtable',dest='genotypes',type=str,help='table of mapref and superts genotype intersections')
     opts = parser.parse_args()
+
+
+    tablein = open(opts.genotypes,'r')
+    tableout = open('concordance_metrics_%s' % opts.genotypes,'w')
+    tableout.write('metric\tmetric_count\tn_observations\n')
+    concordance_metrics = CalculateMetrics(tablein)
+    for metric in concordance_metrics:
+        tableout.write('%s\t%s\t%s\n' % (metric,concordance_metrics[metric][0],concordance_metrics[metric][1]))
+
+    tableout.close() 

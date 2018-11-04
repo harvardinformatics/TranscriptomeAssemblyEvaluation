@@ -91,7 +91,7 @@ def CalculateMetrics(filehandle):
                 metric_dict['multi_perror'][1]+=1
             if len(supertsalleles) > 1:
                 metric_dict['fp_hets'][0]+=1 ; metric_dict['fp_hets'][1]+=1
-
+                print line
         #### missing from superts ####
         elif supertsalleles == ['NA']:
             metric_dict['fn'][0]+=1 ; metric_dict['fn'][1]+=1
@@ -148,6 +148,7 @@ if __name__=="__main__":
 
 
     tablein = open(opts.genotypes,'r')
+    tablein.readline()
     tableout = open('concordance_metrics_%s' % opts.genotypes,'w')
     tableout.write('metric\tmetric_count\tn_observations\n')
     concordance_metrics = CalculateMetrics(tablein)

@@ -101,13 +101,13 @@ def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields,maprefc
 
     return sequence_clusters_merged,superts_alleles_depth_dict,mref_gtype_dict,false_negative_dict
 
-def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fasta_dict,mref_covdict,false_negative_dict,outfile='test.tsv'):
+def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fasta_dict,mref_covdict,false_negative_dict,superts_cov_dict,outfile='test.tsv'):
     """
     refalleles == dict w/ refsnp pos as key, dict as val, with alleles and depth key-val pairs
     supertsalleles == same as for refalleles but each genomic position has as value a list of dictionaries denoting alleles and depths
     """
     table_out = open(outfile,'w')
-    table_out.write('snpid\tgenomicpositions\tsupertspositions\tmapref_ref\tmaprefalleles\tsuperts_ref\tsupertsalleles\tmaprefcov\tmapref_ad\tsuperts_ad\n')
+    table_out.write('snpid\tgenomicpositions\tsupertspositions\tmapref_ref\tmaprefalleles\tsuperts_ref\tsupertsalleles\tmaprefcov\tmapref_ad\tsuperts_ad\tsupertscov\n')
     for snpid in snp_id_dict:
         
         ## tracking reference sequence alleles for each method
@@ -116,6 +116,7 @@ def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fa
         
         # tracking total coverage in mapref approach
         mapref_coverage = []
+        superts_coverage = []
         
         ## tracking detected alleles in each method
         mapref_alleles_set = Set()
@@ -132,13 +133,13 @@ def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fa
         for genotype_position in snp_id_dict[snpid]:
             if 'TRINITY' in genotype_position:
                 superts_positions.add(genotype_position)
-                print 'length of supertsalleles[genotype_position]',len(supertsalleles[genotype_position])
                 for allele_dict in supertsalleles[genotype_position]:
                     for allele in allele_dict['alleles']:
                         superts_alleles_set.add(allele)
                     sts_ref_alleles_set.add(allele_dict['refallele'])                     
-                ad_string = '%s:%s' % (allele_dict['allele_depths'][0],','.join(allele_dict['allele_depths'][1:]))     
-                superts_ad.add(ad_string)
+                    ad_string = '%s:%s' % (allele_dict['allele_depths'][0],','.join(allele_dict['allele_depths'][1:]))     
+                    superts_ad.add(ad_string)
+                    superts_coverage.append(allele_dict['depth'])
             else:
                 genomic_positions.add(genotype_position) # this deals with multi-mapping of supertranscripts to genome allowing for > 1 genomic position
                 if genotype_position in refalleles:
@@ -146,7 +147,7 @@ def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fa
                         mapref_alleles_set.add(allele)
                     mapref_ref_alleles_set.add(refalleles[genotype_position]['refallele'])
                     mapref_coverage.append(mref_covdict[genotype_position])
-                    ad_string = '%s:%s' % (allele_dict['allele_depths'][0],','.join(allele_dict['allele_depths'][1:]))
+                    ad_string = '%s:%s' % (refalleles[genotype_position]['allele_depths'][0],','.join(refalleles[genotype_position]['allele_depths'][1:]))
                     mapref_ad.add(ad_string)
                 else:
                     mapref_alleles_set.add('NA')
@@ -155,22 +156,44 @@ def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fa
                     mapref_ref_alleles_set.add(str(genome_fasta_dict[chrom][pos-1]))
                     mapref_coverage.append(mref_covdict[genotype_position])
                     mapref_ad.add('NA')
-
-        table_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (snpid,';'.join(genomic_positions),';'.join(superts_positions),';'.join(mapref_ref_alleles_set),';'.join(mapref_alleles_set),';'.join(sts_ref_alleles_set),';'.join(superts_alleles_set),';'.join(mapref_coverage),';'.join(mapref_ad),';'.join(superts_ad)))
+ 
+        table_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (snpid,';'.join(genomic_positions),';'.join(superts_positions),';'.join(mapref_ref_alleles_set),';'.join(mapref_alleles_set),';'.join(sts_ref_alleles_set),';'.join(superts_alleles_set),';'.join(mapref_coverage),';'.join(mapref_ad),';'.join(superts_ad),';'.join(superts_coverage)))
     for pos in false_negative_dict:
-        table_out.write('genomic%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (pos,pos,'NA',false_negative_dict[pos]['refallele'],';'.join(false_negative_dict[pos]['alleles']),'NA','NA',false_negative_dict[pos]['depth'],';'.join(mapref_ad),'NA'))
+        if pos in superts_cov_dict:
+            for coverage in superts_cov_dict[pos]:
+                superts_coverage.append(coverage)
+            
+        else:
+            superts_coverage = ['NA']
+ 
+        table_out.write('genomic%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (pos,pos,'NA',false_negative_dict[pos]['refallele'],';'.join(false_negative_dict[pos]['alleles']),'NA','NA',false_negative_dict[pos]['depth'],';'.join(mapref_ad),'NA',';'.join(superts_coverage)))
     table_out.close()
             
         
+def BuildSupertsCovDictFromBed(coordinatetable,supertscovbed):
+    super_cov_dict = {}
+    ts_cov_in=open(supertscovbed,'r')
+    for line in ts_cov_in:
+        linelist = line.strip().split()
+        super_cov_dict['%s:%s' % (linelist[0],linelist[2])] = linelist[3]
+    
+    cov_dict = defaultdict(list)
+    coordfile = open(coordinatetable,'r')
+    for line in coordfile:
+        contig,ctstart,ctend,chrom,chromstart,chromend,strand = line.strip().split()
+        cov_dict['%s:%s' % (chrom,chromend)].append(super_cov_dict['%s:%s' % (contig,ctend)])
+
+    return cov_dict   
 
 
-        
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description='Summarize map-to-ref and SuperTranscript genotype intersection')
     parser.add_argument('-m','--map-ref-gtypes-bed',dest='mapref',type=str,help='bed of map-to-ref genotypes')
     parser.add_argument('-s','--supertranscript-gtypes-bed',dest='superts',type=str,help='bed of supertranscript genotypes')
     parser.add_argument('-mrc','--mapref-coverage-bed',dest='maprefcov',type=str,help='mapref raw coverageBed -d bed')
+    parser.add_argument('-scov','--superts-coverage-bed',dest='supercov',type=str,help='superts proper bed format coverage bed')
+    parser.add_argument('-sexons','--superts-exons-to-gcoords',dest='coordinates',type=str,help='superts exons 1bp, with genomic coords')
     parser.add_argument('-o','--tsv_outfile',dest='tableout',type=str,help='output of alleles and positions by superts and mapref')
     parser.add_argument('-gf','--genome-fasta',dest='genome',type=str,help='reference genome sequence')
     opts = parser.parse_args()
@@ -180,6 +203,7 @@ if __name__=="__main__":
 
     genome_dict=SeqIO.to_dict(SeqIO.parse(opts.genome, "fasta"))
     mapref_cov_dict=BuildCovDict(opts.maprefcov)
+    supercov_dict = BuildSupertsCovDictFromBed(opts.coordinates,opts.supercov)
     snp_clusters,superts_alleles_depth_dict,mref_gtype_dict,false_negative_dict = CrossMapContigsToGenomes(opts.mapref,opts.superts,mapref_fields,superts_fields,mapref_cov_dict)
    
-    BuildSnpTableFromSnpClusters(snp_clusters,mref_gtype_dict,superts_alleles_depth_dict,genome_dict,mapref_cov_dict,false_negative_dict,outfile=opts.tableout)
+    BuildSnpTableFromSnpClusters(snp_clusters,mref_gtype_dict,superts_alleles_depth_dict,genome_dict,mapref_cov_dict,false_negative_dict,supercov_dict,outfile=opts.tableout)

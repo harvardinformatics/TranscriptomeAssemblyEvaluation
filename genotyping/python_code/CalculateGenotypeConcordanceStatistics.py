@@ -1,14 +1,14 @@
 import argparse
 """
 QC metric definitions:
-1. Recall == proportion of all called mapref genotypes that are called correctly with supertranscripts
+1. Recall (sensitivity, true positive rate) == proportion of all called mapref genotypes that are called correctly with supertranscripts
 2. Recall_hets == proportion of all mapref het genotypes that are called correctly
 3. FP == frequency of sites that have superts genotypes but no mapref genotype
 4. FP_hets == frequency of sites with a het superts genotype that are without a mapref genotype or with a homozygous alt mapref call
 5. FN == frequency of sites with a mapref genotype call that have no superts genotype call
 6. FN_hets == frequency of mapref het calls that don't have a corresponding superts het call
 7. error_rate = frequency of sites that have conflicting mapref and superts calls, including
-   no call in mapref but called in superts, or called in mapref but no call in superts. 1-error_rate = global_specificity
+   no call in mapref but called in superts, or called in mapref but no call in superts. 
 8. specificity == proportion of supertranscripts genotypes that are observed correctly relative to mapref, includes superts 'NA'
 9. snv_to_indel_error == frequency of called mapref SNV genotypes that are called as indel polymorphisms in superts
 10. allele_included == frequency of cases where an erroneous superts genotype call has, as one of its alleles, an allele in the mapref genotype call
@@ -91,7 +91,6 @@ def CalculateMetrics(filehandle):
                 metric_dict['multi_perror'][1]+=1
             if len(supertsalleles) > 1:
                 metric_dict['fp_hets'][0]+=1 ; metric_dict['fp_hets'][1]+=1
-                print line
         #### missing from superts ####
         elif supertsalleles == ['NA']:
             metric_dict['fn'][0]+=1 ; metric_dict['fn'][1]+=1
@@ -111,6 +110,7 @@ def CalculateMetrics(filehandle):
                 metric_dict['diff_hets'][0]+=1 ; metric_dict['diff_hets'][1]+=1
             elif len(maprefalleles) > 1 and len(supertsalleles) == 1:
                 metric_dict['fn_hets'][0]+=1 ; metric_dict['fn_hets'][1]+=1
+                metric_dict['recall_hets'][1]+=1
             elif len(maprefalleles) == 1 and len(supertsalleles) > 1:
                 metric_dict['fp_hets'][0]+=1 ; metric_dict['fp_hets'][1]+=1
          

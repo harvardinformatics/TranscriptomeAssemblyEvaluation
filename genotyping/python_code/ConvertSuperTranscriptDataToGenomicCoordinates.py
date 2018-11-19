@@ -106,9 +106,12 @@ def VcfToBed(vcf):
 def IntersectGenotypesGenomicPosDepth(genotype_bed,depth_bed):
     intersect_cmd = 'intersectBed -loj -a %s -b %s > wGenomePosAndSuperTsDepth_%s' % (genotype_bed,depth_bed,genotype_bed)
     print intersect_cmd
-    proc = Popen(intersect_cmd, shell=True, stdout=PIPE, stderr=PIPE)
-    stdout, stderr = proc.communicate()
-    return stdout,stderr
+    proc1 = Popen(intersect_cmd, shell=True, stdout=PIPE, stderr=PIPE)
+    stdout1, stderr1 = proc1.communicate()
+    reformat_cmd='awk \'{print $15"\t"$16"\t"$17"\t"$18"\t"$19"\t"$1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8"\t"$9"\t"$10"\t"$11}\''
+    proc2 = Popen(reformat_cmd, shell=True, stdout=PIPE, stderr=PIPE)
+    stdout2, stderr2 = proc2.communicate()
+    return stdout1,stderr1,stdout2,stderr2
 
 
 if __name__=="__main__": 
@@ -171,4 +174,4 @@ if __name__=="__main__":
     ####### Intersect SuperTranscript genotypes with genomic position and coverage data #####            
     logging.write('intersecting genotypes with genomic position and coverage data\n') 
     
-    gtype_dp_intersect_out,gtype_dp_intersect_err=IntersectGenotypesGenomicPosDepth('exons_%sbed' % opts.vcf[:-3], 'wdepth_supertscoords_exons_%s' % opts.outbed)
+    gtype_dp_intersect_out,gtype_dp_intersect_err,reformat_out,reformat_err=IntersectGenotypesGenomicPosDepth('exons_%sbed' % opts.vcf[:-3], 'wdepth_supertscoords_exons_%s' % opts.outbed)

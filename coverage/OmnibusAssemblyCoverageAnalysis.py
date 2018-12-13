@@ -29,7 +29,6 @@ def build_ref_ts_gene_map(mapfile):
         ref_dict[alist[0]]=alist[1]
     return ref_map
 
-
 def psl_addstats(psl_dict):
     """
     takes a psl file from a BLAT or similar search and
@@ -45,7 +44,6 @@ def psl_addstats(psl_dict):
         
     return psl_dict
 
-
 def build_expression_dict(exprmatrix,expcol=1,header=True):
     expr_dict={}
     fopen=open(exprmatrix,'r')
@@ -55,7 +53,6 @@ def build_expression_dict(exprmatrix,expcol=1,header=True):
         linelist=line.strip().split()
         expr_dict[linelist[0]]=float(linelist[expcol])
     return expr_dict
-
 
 def build_alignment_intervals(psl_dict):
     """
@@ -82,13 +79,11 @@ def build_alignment_intervals(psl_dict):
    
     return psl_dict
 
-
 def calculate_target_coverage(intervals,targetlength):
     bases=0
     for newinterval in intervals:
         bases=bases+(newinterval[1]-newinterval[0])
     return bases/float(targetlength)
-
 
 def build_besthit_per_target(target_to_queries):
     """
@@ -136,14 +131,47 @@ def build_ts_gene_map(mapfilehandle):
 
 def calc_gene_coverage_from_intervals(gene,intervals,gene_length_dict):
     covered_bases = 0
-    print 'intervals', intervals
     for interval in intervals:
-        print 'interval is', interval
-        print type(interval[1]),type(interval[0])
         covered_bases = covered_bases + (interval[1] - interval[0])
-    coverage = covered_bases/float(gene_length_dict[gene])
+    try:
+        coverage = covered_bases/float(gene_length_dict[gene])
+    except:
+        print('zero denominator error, glength = 0 for %s' % gene)
+        coverage = 0
     return coverage
 
+def calc_tscript_tpm_weights(ts_expr_matrix,ts_gene_map):
+    expr_group_by_gene = {}
+    for tscript in ts_gene_map.keys():
+        if ts_gene_map[tscript] in expr_group_by_gene:
+            expr_group_by_gene[ts_gene_map[tscript]][tscript] = float(ts_expr_matrix[tscript])
+        else:
+            expr_group_by_gene[ts_gene_map[tscript]] = {}
+            expr_group_by_gene[ts_gene_map[tscript]][tscript] = float(ts_expr_matrix[tscript])
+    for gene in expr_group_by_gene:
+        tpm_sum = 0
+        for tscript in expr_group_by_gene[gene]:
+            tpm_sum += expr_group_by_gene[gene][tscript]
+        if tpm_sum > 0:
+            for tscript in expr_group_by_gene[gene]:
+                expr_group_by_gene[gene][tscript] = expr_group_by_gene[gene][tscript]/float(tpm_sum)    
+    
+    return expr_group_by_gene        
+
+def calculate_weighted_coverage(weight_dict,sumcovdict):
+    fout = open('ts_notcovered.txt','w')
+    gene_cov_dict = {}
+    for gene in weight_dict:
+        gene_coverage = 0
+        for ts in weight_dict[gene]:
+            try:
+                gene_coverage += weight_dict[gene][ts] * sumcovdict[ts]['coverage']    
+            except:
+                if ts not in sumcovdict:
+                    fout.write('%s\n' % ts)              
+        gene_cov_dict[gene] = gene_coverage 
+    fout.close()     
+    return gene_cov_dict
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='pipeline for generating sundry transcriptome assembly coverage statistics')
@@ -154,7 +182,7 @@ if __name__=="__main__":
     parser.add_argument('-generefx','--reference_gene_matrix',dest='generefx',type=str,help='expression matrix for gene map-to-reference')
     parser.add_argument('-o','--outfile_prefix',dest='outprefix',type=str,help='prefix for output files summarizing coverage')
     parser.add_argument('-gtmap','--gene_transcript_map',dest='gtmap',type=str,help='gene transcript map')
-    parser.add_argument('-glength','--reference_gene_lengths',dest='glengths',type=str,help='file with total nucleotides in genome for a gene')
+    #parser.add_argument('-glength','--reference_gene_lengths',dest='glengths',type=str,help='file with total nucleotides in genome for a gene')
     opts = parser.parse_args()
 
     psl_open = open(opts.hits,'r')
@@ -167,7 +195,7 @@ if __name__=="__main__":
     gene_lengths_in.readline()
     for line in gene_lengths_in:
         linelist = line.strip().split()
-        gene_length_dict[linelist[0]] = int(linelist[1])
+        gene_length_dict[linelist[0]] = int(linelist[1].split('.')[0])
 
     # create dict for storing coverage intervals at the gene level
     gene_interval_dict = defaultdict()
@@ -175,7 +203,10 @@ if __name__=="__main__":
     # build reference expression dictionaries
     target_expression = build_expression_dict(opts.isorefx)
     gene_expression_dict = build_expression_dict(opts.generefx)
-    
+
+    # get tpm weights for ref tscripts
+    weight_dict = calc_tscript_tpm_weights(target_expression,gene_ts_dict)
+    #print 'weight dict', weight_dict    
     # create dictionary with targets as keys 
     target_to_queries=defaultdict(list)
 
@@ -199,11 +230,12 @@ if __name__=="__main__":
     bestout.write('target,query,coverage,TPM\n') 
     bestmis=open(opts.outprefix+'_best.missing','w')
     for targetkey in target_expression:
-        if targetkey in besthit_per_target:
-            bestout.write('%s,%s,%s,%s\n' % (targetkey,besthit_per_target[targetkey]['qName'],besthit_per_target[targetkey]['coverage_from_interval'],target_expression[targetkey]))
-        else:
-            bestout.write('%s,%s,%s,%s\n' % (targetkey,'NA',0,target_expression[targetkey]))
-            bestmis.write('%s\n' % targetkey)
+        if target_expression[targetkey] > 0:
+            if targetkey in besthit_per_target:
+                bestout.write('%s,%s,%s,%s\n' % (targetkey,besthit_per_target[targetkey]['qName'],besthit_per_target[targetkey]['coverage_from_interval'],target_expression[targetkey]))
+            else:
+                bestout.write('%s,%s,%s,%s\n' % (targetkey,'NA',0,target_expression[targetkey]))
+                bestmis.write('%s\n' % targetkey)
     
     bestout.close()    
     bestmis.close()
@@ -213,24 +245,30 @@ if __name__=="__main__":
     sumout.write('target,numqueries,coverage,TPM,querylist\n')
     summis=open(opts.outprefix+'summed.missing','w')
     for targetkey in target_expression:
-        if targetkey in summed_coverage_per_target:
-            sumout.write('%s,%s,%s,%s,%s\n' % (targetkey,summed_coverage_per_target[targetkey]['numqueries'],summed_coverage_per_target[targetkey]['coverage'],target_expression[targetkey],summed_coverage_per_target[targetkey]['queries']))
-        else:
-            sumout.write('%s,%s,%s,%s,%s\n' % (targetkey,0,0,target_expression[targetkey],'NA'))
-            summis.write('%s\n' % targetkey)
+        if target_expression[targetkey] > 0:
+            if targetkey in summed_coverage_per_target:
+                sumout.write('%s,%s,%s,%s,%s\n' % (targetkey,summed_coverage_per_target[targetkey]['numqueries'],summed_coverage_per_target[targetkey]['coverage'],target_expression[targetkey],summed_coverage_per_target[targetkey]['queries']))
+            else:
+                sumout.write('%s,%s,%s,%s,%s\n' % (targetkey,0,0,target_expression[targetkey],'NA'))
+                summis.write('%s\n' % targetkey)
 
     sumout.close()
     summis.close()
-
+   
+    weighted_gene_coverage = calculate_weighted_coverage(weight_dict,summed_coverage_per_target)
+    
     gene_coverage_out = open('%s_genecoverage.csv' % opts.outprefix,'w')
-    gene_coverage_out.write('geneid,refTPM,coverage\n')
+    gene_coverage_out.write('geneid,refTPM,,weighted_coverage\n')
     for gene in gene_expression_dict.keys():
-        if gene in gene_interval_dict:    
-            coverage = calc_gene_coverage_from_intervals(gene,gene_interval_dict[gene],gene_length_dict)
-        else:
-            print 'no coverage for %s' % gene
-            coverage = 0
-        gene_coverage_out.write('%s,%s,%s\n' % (gene,gene_expression_dict[gene],coverage))
+        if gene_expression_dict[gene] > 0:
+            if gene in gene_interval_dict:    
+                #coverage = calc_gene_coverage_from_intervals(gene,gene_interval_dict[gene],gene_length_dict)
+                wt_cov = weighted_gene_coverage[gene]
+            else:
+                print 'no coverage for %s' % gene
+                #coverage = 0
+                wt_cov = 0
+            gene_coverage_out.write('%s,%s,%s\n' % (gene,gene_expression_dict[gene],wt_cov))
 
     gene_coverage_out.close()    
  

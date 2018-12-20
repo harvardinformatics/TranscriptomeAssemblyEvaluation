@@ -12,7 +12,6 @@ import argparse
 from numpy import mean,median
 from interval import interval, inf, imath
 from collections import defaultdict
-from sets import Set
 
 psl_keys=['matches','misMatches','repMatches','nCount','qNumInsert','qBaseInsert','tNumInsert','tBaseInsert','strand','qName','qSize','qStart','qEnd','tName','tSize','tStart','tEnd','blockCount','blockSizes','qStarts','tStarts']
 
@@ -129,25 +128,16 @@ def build_ts_gene_map(mapfilehandle):
         ts_to_gene_dict[tsid] = geneid
     return ts_to_gene_dict
 
-def calc_gene_coverage_from_intervals(gene,intervals,gene_length_dict):
-    covered_bases = 0
-    for interval in intervals:
-        covered_bases = covered_bases + (interval[1] - interval[0])
-    try:
-        coverage = covered_bases/float(gene_length_dict[gene])
-    except:
-        print('zero denominator error, glength = 0 for %s' % gene)
-        coverage = 0
-    return coverage
 
 def calc_tscript_tpm_weights(ts_expr_matrix,ts_gene_map):
     expr_group_by_gene = {}
     for tscript in ts_gene_map.keys():
-        if ts_gene_map[tscript] in expr_group_by_gene:
-            expr_group_by_gene[ts_gene_map[tscript]][tscript] = float(ts_expr_matrix[tscript])
-        else:
-            expr_group_by_gene[ts_gene_map[tscript]] = {}
-            expr_group_by_gene[ts_gene_map[tscript]][tscript] = float(ts_expr_matrix[tscript])
+        if tscript in ts_expr_matrix:
+            if ts_gene_map[tscript] in expr_group_by_gene:
+                expr_group_by_gene[ts_gene_map[tscript]][tscript] = float(ts_expr_matrix[tscript])
+            else:
+                expr_group_by_gene[ts_gene_map[tscript]] = {}
+                expr_group_by_gene[ts_gene_map[tscript]][tscript] = float(ts_expr_matrix[tscript])
     for gene in expr_group_by_gene:
         tpm_sum = 0
         for tscript in expr_group_by_gene[gene]:
@@ -159,18 +149,13 @@ def calc_tscript_tpm_weights(ts_expr_matrix,ts_gene_map):
     return expr_group_by_gene        
 
 def calculate_weighted_coverage(weight_dict,sumcovdict):
-    fout = open('ts_notcovered.txt','w')
     gene_cov_dict = {}
     for gene in weight_dict:
         gene_coverage = 0
         for ts in weight_dict[gene]:
-            try:
+            if ts in sumcovdict:
                 gene_coverage += weight_dict[gene][ts] * sumcovdict[ts]['coverage']    
-            except:
-                if ts not in sumcovdict:
-                    fout.write('%s\n' % ts)              
         gene_cov_dict[gene] = gene_coverage 
-    fout.close()     
     return gene_cov_dict
 
 if __name__=="__main__":
@@ -182,7 +167,6 @@ if __name__=="__main__":
     parser.add_argument('-generefx','--reference_gene_matrix',dest='generefx',type=str,help='expression matrix for gene map-to-reference')
     parser.add_argument('-o','--outfile_prefix',dest='outprefix',type=str,help='prefix for output files summarizing coverage')
     parser.add_argument('-gtmap','--gene_transcript_map',dest='gtmap',type=str,help='gene transcript map')
-    #parser.add_argument('-glength','--reference_gene_lengths',dest='glengths',type=str,help='file with total nucleotides in genome for a gene')
     opts = parser.parse_args()
 
     psl_open = open(opts.hits,'r')
@@ -190,13 +174,6 @@ if __name__=="__main__":
 
     gene_ts_dict = build_ts_gene_map(maphandle)
     
-    gene_length_dict = {}
-    gene_lengths_in = open(opts.glengths,'r') # file has a header
-    gene_lengths_in.readline()
-    for line in gene_lengths_in:
-        linelist = line.strip().split()
-        gene_length_dict[linelist[0]] = int(linelist[1].split('.')[0])
-
     # create dict for storing coverage intervals at the gene level
     gene_interval_dict = defaultdict()
 
@@ -206,7 +183,6 @@ if __name__=="__main__":
 
     # get tpm weights for ref tscripts
     weight_dict = calc_tscript_tpm_weights(target_expression,gene_ts_dict)
-    #print 'weight dict', weight_dict    
     # create dictionary with targets as keys 
     target_to_queries=defaultdict(list)
 
@@ -256,19 +232,17 @@ if __name__=="__main__":
     summis.close()
    
     weighted_gene_coverage = calculate_weighted_coverage(weight_dict,summed_coverage_per_target)
-    
+    gmissing = open('missing_genes.txt','w') 
     gene_coverage_out = open('%s_genecoverage.csv' % opts.outprefix,'w')
-    gene_coverage_out.write('geneid,refTPM,,weighted_coverage\n')
+    gene_coverage_out.write('geneid,refTPM,weighted_coverage\n')
     for gene in gene_expression_dict.keys():
         if gene_expression_dict[gene] > 0:
             if gene in gene_interval_dict:    
-                #coverage = calc_gene_coverage_from_intervals(gene,gene_interval_dict[gene],gene_length_dict)
                 wt_cov = weighted_gene_coverage[gene]
             else:
-                print 'no coverage for %s' % gene
-                #coverage = 0
+                gmissing.write('%s\n' % gene)
                 wt_cov = 0
             gene_coverage_out.write('%s,%s,%s\n' % (gene,gene_expression_dict[gene],wt_cov))
 
     gene_coverage_out.close()    
- 
+    gmissing.close()

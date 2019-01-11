@@ -9,11 +9,11 @@ def biallelic_snv_filter(gtdict):
     for allele in gtdict['maprefalleles'].split(';'):
         if len(allele) > 1 and allele != 'NA':
             filter = True
-    if len(gtdict['superts_ref']) > 1 and gtdict['superts_ref'] != 'NA':
-        filter = True
-    for allele in gtdict['supertsalleles'].split(';'):
-        if len(allele) > 1 and allele != 'NA':
-            filter = True
+    #if len(gtdict['superts_ref']) > 1 and gtdict['superts_ref'] != 'NA':
+        #filter = True
+    #for allele in gtdict['supertsalleles'].split(';'):
+        #if len(allele) > 1 and allele != 'NA':
+            #filter = True
     return filter      
 
 
@@ -23,9 +23,9 @@ if __name__=="__main__":
     opts = parser.parse_args()
 
     fopen=open(opts.genotypes,'r')
-    fout=open('biallelicSNVs_%s' % basename(opts.genotypes),'w')
+    fout=open('maprefbiallelicfiltered_%s' % basename(opts.genotypes),'w')
     fields = fopen.readline().strip().split('\t')
-    print fields
+    fout.write('%s\n' % '\t'.join(fields))
     for line in fopen:
         linelist = line.strip().split('\t')
         linedict = dict(zip(fields,linelist))

@@ -1,4 +1,5 @@
 from Bio import SeqIO
+from numpy import mean,median
 import argparse
 from collections import defaultdict
 from sets import Set
@@ -107,7 +108,7 @@ def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fa
     supertsalleles == same as for refalleles but each genomic position has as value a list of dictionaries denoting alleles and depths
     """
     table_out = open(outfile,'w')
-    table_out.write('snpid\tgenomicpositions\tsupertspositions\tmapref_ref\tmaprefalleles\tsuperts_ref\tsupertsalleles\tmaprefcov\tmapref_ad\tsuperts_ad\tsupertscov\n')
+    table_out.write('snpid\tgenomicpositions\tsupertspositions\tmapref_ref\tmaprefalleles\tsuperts_ref\tsupertsalleles\tmaprefcov\tmapref_ad\tsuperts_ad\tmean_supercov\tmedian_supercov\n')
     for snpid in snp_id_dict:
         
         ## tracking reference sequence alleles for each method
@@ -139,7 +140,7 @@ def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fa
                     sts_ref_alleles_set.add(allele_dict['refallele'])                     
                     ad_string = '%s:%s' % (allele_dict['allele_depths'][0],','.join(allele_dict['allele_depths'][1:]))     
                     superts_ad.add(ad_string)
-                    superts_coverage.append(allele_dict['depth'])
+                    superts_coverage.append(int(allele_dict['depth']))
             else:
                 genomic_positions.add(genotype_position) # this deals with multi-mapping of supertranscripts to genome allowing for > 1 genomic position
                 if genotype_position in refalleles:
@@ -156,17 +157,18 @@ def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fa
                     mapref_ref_alleles_set.add(str(genome_fasta_dict[chrom][pos-1]))
                     mapref_coverage.append(mref_covdict[genotype_position])
                     mapref_ad.add('NA')
- 
-        table_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (snpid,';'.join(genomic_positions),';'.join(superts_positions),';'.join(mapref_ref_alleles_set),';'.join(mapref_alleles_set),';'.join(sts_ref_alleles_set),';'.join(superts_alleles_set),';'.join(mapref_coverage),';'.join(mapref_ad),';'.join(superts_ad),';'.join(superts_coverage)))
+        #print 'superts coverage in %s' % superts_coverage 
+        table_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (snpid,';'.join(genomic_positions),';'.join(superts_positions),';'.join(mapref_ref_alleles_set),';'.join(mapref_alleles_set),';'.join(sts_ref_alleles_set),';'.join(superts_alleles_set),';'.join(mapref_coverage),';'.join(mapref_ad),';'.join(superts_ad),mean(superts_coverage),median(superts_coverage)))
     for pos in false_negative_dict:
+        superts_coverage = []
         if pos in superts_cov_dict:
             for coverage in superts_cov_dict[pos]:
-                superts_coverage.append(coverage)
-            
+                superts_coverage.append(int(coverage))
         else:
-            superts_coverage = ['NA']
- 
-        table_out.write('genomic%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (pos,pos,'NA',false_negative_dict[pos]['refallele'],';'.join(false_negative_dict[pos]['alleles']),'NA','NA',false_negative_dict[pos]['depth'],';'.join(mapref_ad),'NA',';'.join(superts_coverage)))
+            #superts_coverage = ['NA']
+            superts_coverage.append(0) # added 2019.01.11 , as think prev line was a mistake
+        print 'superts coverage in %s' % superts_coverage
+        table_out.write('genomic%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (pos,pos,'NA',false_negative_dict[pos]['refallele'],';'.join(false_negative_dict[pos]['alleles']),'NA','NA',false_negative_dict[pos]['depth'],';'.join(mapref_ad),'NA',mean(superts_coverage),median(superts_coverage)))
     table_out.close()
             
         

@@ -136,8 +136,6 @@ def calc_tscript_tpm_weights(ts_expr_matrix,ts_gene_map):
             if ts_gene_map[tscript] in expr_group_by_gene:
                 expr_group_by_gene[ts_gene_map[tscript]][tscript] = float(ts_expr_matrix[tscript])
             else:
-                #if ts_gene_map[tscript] == 'ENSMUSG00000039860':
-                #    print 'ts in map'
                 expr_group_by_gene[ts_gene_map[tscript]] = {}
                 expr_group_by_gene[ts_gene_map[tscript]][tscript] = float(ts_expr_matrix[tscript])
     
@@ -242,6 +240,9 @@ if __name__=="__main__":
             if gene in gene_interval_dict:    
                 if gene in weighted_gene_coverage: # deals with zero ts level estimates but nonzero gene level TPMs
                     wt_cov= weighted_gene_coverage[gene]
+                else:
+                    print '%s not in wt cov' % gene
+                    wt_cov = 0
             else:
                 gmissing.write('%s\n' % gene)
                 wt_cov = 0

@@ -120,7 +120,9 @@ def CalculateMetrics(filehandle):
                     included_count+=1
             if included_count > 0:
                 metric_dict['allele_incl'][0]+=1 ; metric_dict['allele_incl'][1]+=1
-            
+            else:
+                metric_dict['allele_incl'][1]+=1
+ 
             if superts_positions > 1:
                 metric_dict['multi_perror'][0]+=1 ; metric_dict['multi_perror'][1]+=1
             else:

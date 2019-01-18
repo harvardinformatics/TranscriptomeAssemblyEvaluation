@@ -1,23 +1,23 @@
 import argparse
 from os.path import basename
-
+from sets import Set
 
 def biallelic_snv_filter(gtdict,superfilter=False):
     filter = False
-    mapref_allele_lengths = []
+    mapref_allele_lengths = Set()
     for allele in gtdict['maprefalleles'].split(';'):
         if allele != 'NA':
-            mapref_allele_lengths.append(len(allele))
+            mapref_allele_lengths.add(len(allele))
     if len(mapref_allele_lengths) > 1:
         filter = True    
     if len(gtdict['maprefalleles'].split(';')) > 2:
         filter = True
     
     if superfilter == True:
-        superts_allele_lengths = []
+        superts_allele_lengths = Set()
         for allele in gtdict['supertsalleles'].split(';'):
             if allele != 'NA':
-                superts_allele_lengths.append(len(allele))
+                superts_allele_lengths.add(len(allele))
         if len(superts_allele_lengths) > 1:
             filter = True
         if len(gtdict['supertsalleles'].split(';')) > 2:

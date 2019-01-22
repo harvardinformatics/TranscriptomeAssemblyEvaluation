@@ -135,7 +135,7 @@ def FalsePositiveHet(snp_dict):
     in map-to-ref is called as a bi-allelic het via
     SuperTranscript method
     """
-    if snp_dict['maprefalleles'] == 'NA' or len(snp_dict['maprefalleles']) == 1:
+    if snp_dict['maprefalleles'] == 'NA' or len(snp_dict['maprefalleles'].split(';')) == 1:
         if snp_dict['supertsalleles'] != 'NA' and len(snp_dict['supertsalleles'].split(';')) == 2:
             return True
         else:

@@ -156,6 +156,21 @@ def FalseNegative(snp_dict):
     else:
          return 'NA'
 
+def MultiSuperError(snp_dict):
+    """
+    proportion of discordant genotypes
+    where multiple SuperTranscripts align
+    to a genomic location
+    """
+    mapref_allele_set = Set(snp_dict['maprefalleles'].split(';'))
+    superts_allele_set = Set(snp_dict['supertsalleles'].split(';'))
+    if mapref_allele_set != superts_allele_set:
+        if len(snp_dict['supertspositions'].split(';')) > 1:
+            return True
+        else:
+            return False
+    else:
+        return 'NA'
 
 def FalseNegativeHet(snp_dict):
     """
@@ -180,7 +195,7 @@ if __name__=="__main__":
     parser.add_argument('-sid','--sample_id', dest='sampleid',type=str,help='sample label for table writing')
     opts = parser.parse_args()
 
-    qc_dict = {'fp_indel':{'fp_indel':0,'counted':0},'err_snv2indel':{'err_snv2indel':0,'counted':0},'err_mrefincl':{'err_mrefincl':0,'counted':0},'specificity':{'specificity':0,'counted':0},'fn_het':{'fn_het':0,'counted':0},'fn':{'fn':0,'counted':0},'fp_het':{'fp_het':0,'counted':0},'fp':{'fp':0,'counted':0},'het_recall':{'het_recall':0,'counted':0},'recall':{'recall':0,'counted':0},'concordance':{'concordance':0,'counted':0}}
+    qc_dict = {'err_multisuper':{'err_multisuper':0,'counted':0},'fp_indel':{'fp_indel':0,'counted':0},'err_snv2indel':{'err_snv2indel':0,'counted':0},'err_mrefincl':{'err_mrefincl':0,'counted':0},'specificity':{'specificity':0,'counted':0},'fn_het':{'fn_het':0,'counted':0},'fn':{'fn':0,'counted':0},'fp_het':{'fp_het':0,'counted':0},'fp':{'fp':0,'counted':0},'het_recall':{'het_recall':0,'counted':0},'recall':{'recall':0,'counted':0},'concordance':{'concordance':0,'counted':0}}
     print 'num metrics', len(qc_dict.keys())
     fopen = open(opts.genotypes,'r')
     header_fields = fopen.readline().strip().split()
@@ -217,6 +232,7 @@ if __name__=="__main__":
             qc_dict['err_snv2indel']['counted']+=1
         else:
             pass
+
         ### specificity ###
         specificity = Specificity(snp_dict)
         if specificity == True:
@@ -295,6 +311,15 @@ if __name__=="__main__":
         else:
             pass
 
+        ### multi superts alignment error ###
+        errmultsuper = MultiSuperError(snp_dict)
+        if errmultsuper == True:
+            qc_dict['err_multisuper']['err_multisuper']+=1
+            qc_dict['err_multisuper']['counted']+=1
+        elif errmultsuper == False:
+            qc_dict['err_multisuper']['counted']+=1
+        else:
+            pass
     print qc_dict
 
     fout= open('%s.concordancemetrics.tsv' % opts.genotypes[:-4],'w')

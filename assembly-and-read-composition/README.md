@@ -5,6 +5,7 @@ We created bed files of reference genome intervals from annotations in gtf forma
 
 ### Functional classification of assembly contigs
 We mapped assembly contigs to the genome with GMAP, with an example command line as follows:
+
     gmap -n 0 -b -B 5 -t 15  -d no_patches_Mus_musculus.GRCm38.dna_sm.toplevel -D /PATH/TO/gmap_index/ --failed-input failed.fasta -f samse transcriptome.fasta > GmapToGenome.sam
 
 We then extract the successfully aligned contigs with samtools to a bam file, then convert this bam to bed with bedtools using the -splitD flag that splits on both Ns and Ds in the CIGAR string. We then execute a shell script, BedToContigCompositionBaseCounts.sh, which takes as its one command line argument the bed file of contig alignments to the genome. This script calls both GetTotalBasesMappedPerContig.py and TallyBedIntersect.py. Once the "contig tallies" files have been created for each functional class of nucleotides, we aggregate them into a summary table with WriteFunctCompPerRead.py. 

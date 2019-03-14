@@ -1,12 +1,12 @@
 import argparse
 
-def CountVariantsFromFilteredVcf(filt_variants_handle,ploidy):
+def CountVariantsFromFilteredVcf(filt_variants_handle,ploidy,hetbedout):
     
     het_count = 0
     alt_homo_count = 0
     keys='CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	GENOTYPE'.split('\t')               
     ploidy_string = '/'.join(['1']*ploidy)
-    bedout=open('het_variants.bed','w')
+    bedout=open(hetbedout,'w')
     for line in filt_variants_handle:
         if line[0] != '#' and "PATCH" not in line:
             gtype_dict = dict(zip(keys,line.strip().split('\t')))            
@@ -24,11 +24,12 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(description='pipeline for generating sundry transcriptome assembly coverage statistics')
     parser.add_argument('-vvcf','--filt-variants-vcf',dest='vvcf',type=str,help='concatenated psl file bits from job array, w/o headers')
     parser.add_argument('-o','--outfile',dest='outfile',type=str,help='name of outfile to which counts are printed')
+    parser.add_argument('-b','--bedout',dest='bedout',type=str,help='name of output bed of het sites')
     parser.add_argument('-p','--ploidy',dest='ploidy',type=int,default=2,help='# of chromosomes in sample, i.e. 2 x # pooled individuals')
     opts = parser.parse_args()
     
     variants_vcf=open(opts.vvcf,'r')
-    het_count,homo_alt_count = CountVariantsFromFilteredVcf(variants_vcf,opts.ploidy)
+    het_count,homo_alt_count = CountVariantsFromFilteredVcf(variants_vcf,opts.ploidy,opts.bedout)
     fout = open(opts.outfile,'w')
     fout.write('number homo alt sites: %s\n' % homo_alt_count)
     fout.write('number het sites: %s\n' % het_count)

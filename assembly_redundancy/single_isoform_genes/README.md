@@ -2,7 +2,7 @@
 
 For RNA-seq samples consisting of pools of wild *Mus*, we assessed the frequency at which annotated single-isoform genes were overlapped by more than one transcriptome assembly contig,as a function of the proportion of annotated isoform nucleoides. If the assemblies are not redundant, the null expectation is that no bases are overlapped by more than one assembly contig.  
 
-As a first step, we take the BLAT mappings of a transcriptome assembly (in psl format) to the referencd transcripts and filter it so as to only retain the best hit per query contig. We do this using step1_BuildBlatBestPerQueryBed.py.  
+As a first step, we take the BLAT mappings of a transcriptome assembly (in psl format) to the referencd transcripts and filter it so as to only retain the best hit per query contig. We do this using [step1_BuildBlatBestPerQueryBed.py](https://github.com/harvardinformatics/TranscriptomeAssemblyEvaluation/blob/master/assembly_redundancy/single_isoform_genes/step1_BuildBlatBestPerQueryBed.py).  
 
 Next, we filter the bed file of best hits per query, only retaining those that map to single-isoform *Mus* genes. We do this using step2_SelectSingleIsoformGenesFromBed.py, which takes as input the filtered psl file and a list of single-isoform *Mus* genes (see mus_single_isoform_genes.txt).  
 

@@ -67,7 +67,7 @@ def CrossMapContigsToGenomes(maprefbed,supertsbed,mreffields,superfields,maprefc
     ref_to_superts = defaultdict(list)
     
     cluster_counter = 0
-    superts_alleles_depth_dict = defaultdict(list) # need to do this bec ind genome positions may have more than 1 gtype
+    superts_alleles_depth_dict = defaultdict(list) # need to do this because individual genomic positions may have >1 genotype
         
     for line in superin:
         linedict,gtypedict,alleles,ref_allele = GenotypeLineParse(line,superfields)
@@ -142,7 +142,11 @@ def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fa
                     superts_ad.add(ad_string)
                     superts_coverage.append(int(allele_dict['depth']))
             else:
-                genomic_positions.add(genotype_position) # this deals with multi-mapping of supertranscripts to genome allowing for > 1 genomic position
+                """
+                this deals with multi-mapping of STs to genome
+                allowing for > 1 genomic position
+                """
+                genomic_positions.add(genotype_position)
                 if genotype_position in refalleles:
                     for allele in refalleles[genotype_position]['alleles']:
                         mapref_alleles_set.add(allele)
@@ -157,18 +161,20 @@ def BuildSnpTableFromSnpClusters(snp_id_dict,refalleles,supertsalleles,genome_fa
                     mapref_ref_alleles_set.add(str(genome_fasta_dict[chrom][pos-1]))
                     mapref_coverage.append(mref_covdict[genotype_position])
                     mapref_ad.add('NA')
-        #print 'superts coverage in %s' % superts_coverage 
+
         table_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (snpid,';'.join(genomic_positions),';'.join(superts_positions),';'.join(mapref_ref_alleles_set),';'.join(mapref_alleles_set),';'.join(sts_ref_alleles_set),';'.join(superts_alleles_set),';'.join(mapref_coverage),';'.join(mapref_ad),';'.join(superts_ad),mean(superts_coverage),median(superts_coverage)))
+
     for pos in false_negative_dict:
         superts_coverage = []
+
         if pos in superts_cov_dict:
             for coverage in superts_cov_dict[pos]:
                 superts_coverage.append(int(coverage))
         else:
-            #superts_coverage = ['NA']
-            superts_coverage.append(0) # added 2019.01.11 , as think prev line was a mistake
-        print 'superts coverage in %s' % superts_coverage
+            superts_coverage.append(0) 
+
         table_out.write('genomic%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (pos,pos,'NA',false_negative_dict[pos]['refallele'],';'.join(false_negative_dict[pos]['alleles']),'NA','NA',false_negative_dict[pos]['depth'],';'.join(mapref_ad),'NA',mean(superts_coverage),median(superts_coverage)))
+
     table_out.close()
             
         
@@ -192,7 +198,7 @@ if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description='Summarize map-to-ref and SuperTranscript genotype intersection')
     parser.add_argument('-m','--map-ref-gtypes-bed',dest='mapref',type=str,help='bed of map-to-ref genotypes')
-    parser.add_argument('-s','--supertranscript-gtypes-bed',dest='superts',type=str,help='bed of supertranscript genotypes')
+    parser.add_argument('-s','--supertranscript-gtypes-bed',dest='superts',type=str,help='bed of supertranscript genotypess')
     parser.add_argument('-mrc','--mapref-coverage-bed',dest='maprefcov',type=str,help='mapref raw coverageBed -d bed')
     parser.add_argument('-scov','--superts-coverage-bed',dest='supercov',type=str,help='superts proper bed format coverage bed')
     parser.add_argument('-sexons','--superts-exons-to-gcoords',dest='coordinates',type=str,help='superts exons 1bp, with genomic coords')

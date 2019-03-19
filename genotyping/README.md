@@ -89,7 +89,7 @@ We then use samtools to extract only the aligned SuperTranscripts and convert th
 
     samtools view -b -F 4 Trinitysupertscipts.GmapToGenome.sam > alignedonly_Trinitysupertscipts.GmapToGenome.bam
 
-Next, we convert this bamfile to bed, retaining the full cigar string for each alignment, using bedtools bamToBed utility and supplying the -cigar argument. Conversion of genotypes to genomic coordinate space relies on parsing the ST alignment CIGAR strings. This,filtering on exons,annotation with coverage depth, and other related operations are carried out with [ConvertSuperTranscriptDataToGenomicCoordinates.py](https://github.com/harvardinformatics/TranscriptomeAssemblyEvaluation/blob/master/genotyping/python_code/ConvertSuperTranscriptDataToGenomicCoordinates.py), which takes as input:  
+Next, we convert this bamfile to bed, retaining the full cigar string for each alignment, using bedtools bamToBed utility and supplying the -cigar argument. Conversion of genotypes to genomic coordinate space relies on parsing the ST alignment CIGAR strings. This, filtering on exons, annotation with coverage depth, and other related operations are carried out with [ConvertSuperTranscriptDataToGenomicCoordinates.py](https://github.com/harvardinformatics/TranscriptomeAssemblyEvaluation/blob/master/genotyping/python_code/ConvertSuperTranscriptDataToGenomicCoordinates.py), which takes as input:  
     
 * the bed file of ST genomic alignments with CIGAR strings, via -i
 * the ST fasta, via -f
@@ -97,3 +97,21 @@ Next, we convert this bamfile to bed, retaining the full cigar string for each a
 * the output of coverageBed on the STs, i.e. prior to conversion to proper bed format, via -sd
 * and the filtered ST vcf-format genotypes file, via -v 
 
+## Intersection of MR and ST genotypes
+
+Prior to intersecting the genotypes, we first convert the MR genotypes to bed format with [ConvertMaprefVcfToBed.py](https://github.com/harvardinformatics/TranscriptomeAssemblyEvaluation/blob/master/genotyping/python_code/ConvertMaprefVcfToBed.py), and only retain genotypes overlapping exons. This script takes as its arguments:  
+
+* the MR filtered vcf file, via -rvcf
+* the merged bedfile of annotated exons, via -e
+
+Next, we perform the intersection with [IntersectMapRefandSuperTranscriptGenotypes.py](https://github.com/harvardinformatics/TranscriptomeAssemblyEvaluation/blob/master/genotyping/python_code/IntersectMapRefandSuperTranscriptGenotypes.py), which takes as its arguments:  
+
+* the bed file of filtered, exonic MR genotypes, via -m
+* the bed file of filtered ST genotypes, prior to extraction of exons-only genotypes, via -s
+* the raw bedtools output from coverageBed for MR, via -mrc
+* the raw bedtools output from coverageBed for ST, via -scov
+* the 1-bp resolution bedfile of exonic sites in ST coordinate space, with genomic coordinates as values in additonal columns) produced previously by ConvertSuperTranscriptDataToGenomicCoordinates.py, which has the prefix "supertscoords", via -sexons
+* the desired name of the tab-separated output file for the intersection, via -o
+* the genome fasta file, via -gf
+
+   

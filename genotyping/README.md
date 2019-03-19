@@ -91,9 +91,9 @@ We then use samtools to extract only the aligned SuperTranscripts and convert th
 
 Next, we convert this bamfile to bed, retaining the full cigar string for each alignment, using bedtools bamToBed utility and supplying the -cigar argument. Conversion of genotypes to genomic coordinate space relies on parsing the ST alignment CIGAR strings. This,filtering on exons,annotation with coverage depth, and other related operations are carried out with [ConvertSuperTranscriptDataToGenomicCoordinates.py](https://github.com/harvardinformatics/TranscriptomeAssemblyEvaluation/blob/master/genotyping/python_code/ConvertSuperTranscriptDataToGenomicCoordinates.py), which takes as input:  
     
-    * the bed file of ST genomic alignments with CIGAR strings, via -i
-    * the ST fasta, via -f
-    * the sorted, merged bed file of genomic exon intervals, via -ex
-    * the output of coverageBed on the STs, i.e. prior to conversion to proper bed format, via -sd
-    * and the filtered ST vcf-format genotypes file 
+* the bed file of ST genomic alignments with CIGAR strings, via -i
+* the ST fasta, via -f
+* the sorted, merged bed file of genomic exon intervals, via -ex
+* the output of coverageBed on the STs, i.e. prior to conversion to proper bed format, via -sd
+* and the filtered ST vcf-format genotypes file, via -v 
 

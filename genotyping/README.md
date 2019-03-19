@@ -53,7 +53,18 @@ This is the first step that uses GATK, so be sure it is in your path to do the f
 
     gatk HaplotypeCaller --java-options "-Xmx32g"  -R /PATH/TO/NEW/INDEX/Mus_musculus.GRCm38.dna_sm.toplevel.fa -I split.dedupped_rg_added_sorted_SRR203276.bam --dont-use-soft-clipped-bases -stand-call-conf 20.0 -O MDC_maptoref_gatk4.vcf
 
+For samples that are know to be pools of separate individuals--BALB/c and wild pools analyzed in this study are comprised of 6 and eight individuals, respectively-- we also included the "--sample-ploidy" with our execution of HaplotypeCaller, specifying the diploid numbers of 12 and 16.
+
 ### Filtering variant calls
 We employ variant call filters recommended by the Broad Institute for genotypes derived from RNA-seq data. Note, identical filters are applied to both the MR and ST-derived genotypes.
 
     gatk VariantFiltration --java-options "-Xmx16g" -R /PATH/TO/NEW/INDEX/Mus_musculus.GRCm38.dna_sm.toplevel.fa -V MDC_maptoref_gatk4.vcf -window 35 -cluster 3 --genotype-filter-name FS --genotype-filter-expression "FS > 30.0" --genotype-filter-name QD --genotype-filter-expression "QD < 2.0" -O filtered_MDC_maptoref_gatk4.vcf
+
+## Collapsing Trinity assembly into SuperTranscripts
+
+To construct putative non-redundant assemblies for genotyping, we collapsed Trinity assemblies into SuperTranscripts using the python script provided with Trinity version 2.6.5, Trinity_gene_splice_modeler.py. This approach collapses sets of contigs belonging to the same Trinity component (i.e. belonging to the same Trinity "gene"). As described by [Davidson et al. 2017, Genome Biology](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-017-1284-1), and to directly quote the [Trinity developers](https://github.com/trinityrnaseq/trinityrnaseq/wiki/SuperTranscripts), "A SuperTranscript is constructed by collapsing unique and common sequence regions among splicing isoforms into a single linear sequence."
+
+## ST Genotyping
+We inferred genotypes using custom modifications run_variant_calling.py, a wrapper provided with Trinity. This script implements the Broad Institute best practices pipeline that we have documented above. Because we used a more recent version of GATK (version 4) than was initially available since this script was made available, For all analyses, we modified the script to point to a local install of version 4. Parameters were provided to match those used in MR genotyping with respect to sjdb overhang and ploidy. As already noted, the same set of filters were imposed on the variant calls to produce a final, filtered set.
+
+

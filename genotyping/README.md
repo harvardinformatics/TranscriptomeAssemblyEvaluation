@@ -78,7 +78,9 @@ For ST, we first converted the gtf file output by Trinity_gene_splice_modeler.py
 For both MR and ST, we produce filtered callable sites bed files by filtering out all sites with depth < 5. In additionl, for analyses in which we only consider sites overlapping reference exons, we further filter the callable sites bed file by using the bedtools intersectBed utility with a bed file of *Mus* exons which we extracted from the original annotation file in gtf format.  
 
 ## Projection of trancriptome into genomic coordinates
-In order to evaluate the ability of genotypes derived from transcriptome assemblies to accurately reconstruct patterns of genomic diversity, one must compare these genotypes to those derived from the map-to-reference genome approach. Doing so requires projecting SuperTranscripts into genomic coordinate space. To do this, we mapped *Mus* SuperTranscripts to the reference genome using GMAP, version 2016-06-30. A generic example of our GMAP command line is as follows:
+In order to evaluate the ability of genotypes derived from transcriptome assemblies to accurately reconstruct patterns of genomic diversity, one must compare these genotypes to those derived from the map-to-reference genome approach. Doing so requires projecting SuperTranscripts into genomic coordinate space. To do this, we mapped *Mus* SuperTranscripts to the reference genome using GMAP, version 2018-07-04. Note: this version represents an update for that used to assess functional composition, that includes updates to handling CIGAR strings,so as to avoid any possible errors in the conversion of ST genotypes to genomic coordinates.  
+
+A generic example of our GMAP command line is as follows:
 
     gmap -n 0 -b -B 5 -t 15  -d no_patches_Mus_musculus.GRCm38.dna_sm.toplevel -D path/to/mus/GRCm38/gmap_index --failed-input Trinity_failed.fasta -f samse trinity_genes.fasta > Trinitysupertscipts.GmapToGenome.sam
 
@@ -87,7 +89,8 @@ We then use samtools to extract only the aligned SuperTranscripts and convert th
 
     samtools view -b -F 4 Trinitysupertscipts.GmapToGenome.sam > alignedonly_Trinitysupertscipts.GmapToGenome.bam
 
-Next, we convert this bamfile to bed, retaining the full cigar string for each alignment, using bedtools bamToBed utility and supplying the -cigar argument. Conversion of genotypes to genomic coordinate space relies on parsing the ST alignment CIGAR strings. This,filtering on exons,annotation with coverage depth, and other related operations are carried out with [ConvertSuperTranscriptDataToGenomicCoordinates.py](https://github.com/harvardinformatics/TranscriptomeAssemblyEvaluation/blob/master/genotyping/python_code/ConvertSuperTranscriptDataToGenomicCoordinates.py), which takes as input:
+Next, we convert this bamfile to bed, retaining the full cigar string for each alignment, using bedtools bamToBed utility and supplying the -cigar argument. Conversion of genotypes to genomic coordinate space relies on parsing the ST alignment CIGAR strings. This,filtering on exons,annotation with coverage depth, and other related operations are carried out with [ConvertSuperTranscriptDataToGenomicCoordinates.py](https://github.com/harvardinformatics/TranscriptomeAssemblyEvaluation/blob/master/genotyping/python_code/ConvertSuperTranscriptDataToGenomicCoordinates.py), which takes as input:  
+    
     * the bed file of ST genomic alignments with CIGAR strings, via -i
     * the ST fasta, via -f
     * the sorted, merged bed file of genomic exon intervals, via -ex

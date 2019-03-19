@@ -1,11 +1,11 @@
 # SNP-based analysis of assembly composition
 
-Our comparision of map-to-reference (MR) and SuperTranscript (ST) genotypes involves four main steps:
+Our comparision of map-to-reference (MR) and SuperTranscript (ST) genotypes involves four main steps:  
 
-    * Inferring genotypes from alignments of RNA-seq reads to the reference genome
-    * Collapsing TRINITY assemblies into STs and inferring genotypes from alignments to STs
-    * Projecting ST genotypes into genomic coordinates
-    * Calculating various performance metrics on ST genotypes using MR as the gold standard
+* Inferring genotypes from alignments of RNA-seq reads to the reference genome
+* Collapsing TRINITY assemblies into STs and inferring genotypes from alignments to STs
+* Projecting ST genotypes into genomic coordinates
+* Calculating various performance metrics on ST genotypes using MR as the gold standard
 
 ## MR genotyping
 We implement the Broad Institute's [best practices](https://gatkforums.broadinstitute.org/gatk/discussion/3892/the-gatk-best-practices-for-variant-calling-on-rnaseq-in-full-detail) for genotyping with RNA-seq data. The only step we do not utilize is base quality recalibration (BQR). This step requires known SNPs, such as those in dbSNP, as a truth set. BQR is not part of the TRINITY developers' best practice for genotyping for the obvious reason that non-model organisms do not have dbSNP resources. Therefore, to make genotypes derived from the two methods more comparable, we do not do BQR.

@@ -162,7 +162,7 @@ We provide three python scripts to obtain counts of heterozygous genotype calls.
 
 [ExtractHetCountFromMaprefGtypeBedfile.py](https://github.com/harvardinformatics/TranscriptomeAssemblyEvaluation/blob/master/genotyping/python_code/ExtractHetCountFromMaprefGtypeBedfile.py), which takes as arguments:  
 * an exon-filtered MR genotype bed file, via -b
-* a flag that, if called, only includes genotypes with the GATK "PASS" filter flag, e.g excluding "SnpCluster" entries.
+* a flag '-p' that, if called, only includes genotypes with the GATK "PASS" filter flag, e.g excluding "SnpCluster" entries.
 
 To determine whether focusing on exons might change the relative difference in estimates of heterozygosity for MR and ST, we also generate counts of heterozygous sites prior to exon filtering, by extracting these directly from the filtered vcf files. We do this with [ExtractHetCountsFromVcfs.py](https://github.com/harvardinformatics/TranscriptomeAssemblyEvaluation/blob/master/genotyping/python_code/ExtractHetCountsFromVcfs.py), which takes as arguments:  
 

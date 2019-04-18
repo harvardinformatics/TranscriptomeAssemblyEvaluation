@@ -67,6 +67,7 @@ mapref_rev.close()
 rscript = open('tximport.Rscript','w')
 rscript.write('setwd("%s")\n' % os.getcwd())
 rscript.write('library(tximport)\n')
+rscript.write('library(readr)\n')
 rscript.write('myfiles = c("overlap_revised_%s","overlap_revised_%s")\n' % (os.path.basename(sys.argv[1]),os.path.basename(sys.argv[2])))
 rscript.write('tx2gene = read.table("tximport_map",header=TRUE)\n')
 # counts
@@ -77,7 +78,7 @@ rscript.write('colnames(txi.counts.dataframe)<-c("mapref","denovo","gene_id")\n'
 rscript.write('txi.counts.dataframe<-subset(txi.counts.dataframe,txi.counts.dataframe$mapref > 0 | txi.counts.dataframe$denovo > 0)\n')
 rscript.write('write.table(txi.counts.dataframe,"%s_countsMRvsDeNovo.tsv",row.names=FALSE,quote=FALSE)\n' % sys.argv[5])
 # tpm
-rscript.write('txi.tpm.dataframe<-as.data.frame(txi.kallisto.tpm$abundance)\n')
+rscript.write('txi.tpm.dataframe<-as.data.frame(txi.kallisto.counts$abundance)\n')
 rscript.write('txi.tpm.dataframe$geneid<-row.names(txi.tpm.dataframe)\n')
 rscript.write('colnames(txi.tpm.dataframe)<-c("mapref","denovo","gene_id")\n')
 rscript.write('txi.tpm.dataframe<-subset(txi.tpm.dataframe,txi.tpm.dataframe$mapref > 0 | txi.tpm.dataframe$denovo > 0)\n') 

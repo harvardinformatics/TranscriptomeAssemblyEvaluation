@@ -36,7 +36,7 @@ def build_gene_to_contigs_map(maptable):
     return map_dict
 
 
-def GeneTpmsFromContigSet(tsmap,kaldict,totalcount):
+def GeneTpmsFromContigSet(tsmap,kaldict):
     gene_dict = {}
     for gene in tsmap:
         flag = 0 
@@ -55,11 +55,6 @@ def GeneTpmsFromContigSet(tsmap,kaldict,totalcount):
     
     return gene_dict
 
-def GetTotalCount(kaldict):
-    totalcount = 0
-    for contig in kaldict:
-        totalcount += kaldict[contig]['est_counts']
-    return totalcount        
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="append ensembl gene level expression data to best hit to ts tables")
@@ -71,19 +66,14 @@ if __name__=="__main__":
     opts = parser.parse_args()
 
     mr_kaldict = kallisto_to_dict(opts.mref)
-    mr_totalcount = GetTotalCount(mr_kaldict)
-    for tscript in mr_kaldict:
-        ts_lstpm = LengthScaleTpmFromContig(mr_kaldict[tscript]['eff_length'],mr_kaldict[tscript]['tpm'],mr_totalcount)
 
     mr_map = build_gene_to_contigs_map(opts.mrmap)
-    mr_genelevel = GeneTpmsFromContigSet(mr_map,mr_kaldict,mr_totalcount) 
+    mr_genelevel = GeneTpmsFromContigSet(mr_map,mr_kaldict) 
  
     denovo_kaldict = kallisto_to_dict(opts.denovo)
-    denovo_totalcount = GetTotalCount(denovo_kaldict)
-    for contig in denovo_kaldict:
     
     denovo_map = build_gene_to_contigs_map(opts.demap)
-    denovo_genelevel = GeneTpmsFromContigSet(denovo_map,denovo_kaldict,denovo_totalcount)
+    denovo_genelevel = GeneTpmsFromContigSet(denovo_map,denovo_kaldict)
 
     all_genes = Set()
     for gene in mr_genelevel:
@@ -96,12 +86,13 @@ if __name__=="__main__":
     genetable.write('geneid,mr_count,mr_tpm,denovo_count,denovo_tpm\n')
     for gene in all_genes:
         if gene in mr_genelevel and gene in denovo_genelevel:
-            genetable.write('%s,%s,%s,%s,%s\n' % (gene,mr_genelevel[gene]['estcount'],mr_genelevel[gene]['tpm'],denovo_genelevel[gene]['estcount'],denovo_genelevel[gene]['tpm']))
+            if float(mr_genelevel[gene]['tpm']) > 0 or float(denovo_genelevel[gene]['tpm']) > 0:
+               genetable.write('%s,%s,%s,%s,%s\n' % (gene,mr_genelevel[gene]['estcount'],mr_genelevel[gene]['tpm'],denovo_genelevel[gene]['estcount'],denovo_genelevel[gene]['tpm']))
         elif gene in mr_genelevel and gene not in denovo_genelevel:
-            genetable.write('%s,%s,%sNA,NA\n' % (gene,mr_genelevel[gene]['estcount'],mr_genelevel[gene]['tpm']))
+            if float(mr_genelevel[gene]['tpm']) > 0:
+                genetable.write('%s,%s,%s,NA,NA\n' % (gene,mr_genelevel[gene]['estcount'],mr_genelevel[gene]['tpm']))
         elif gene not in mr_genelevel and gene in denovo_genelevel:
-            genetable.write('%s,NA,NA,%s,%s\n' % (gene,denovo_genelevel[gene]['estcount'],denovo_genelevel[gene]['tpm']))
-        else:
-           print "not properly cagegorized"
+            if float(denovo_genelevel[gene]['tpm']) > 0:    
+                genetable.write('%s,NA,NA,%s,%s\n' % (gene,denovo_genelevel[gene]['estcount'],denovo_genelevel[gene]['tpm']))
 
     genetable.close()

@@ -8,11 +8,11 @@ fields = ['snpid', 'genomicpositions', 'supertspositions', 'mapref_ref', 'mapref
 def ReplaceNaWithReferenceAllele(snp_dict):
     ## update MR to ref allele if no gtype call ##
     if snp_dict['maprefalleles'] == 'NA':
-        snp_dict['maprefalleles'] = snp_dict['mapref_ref']
+        snp_dict['maprefalleles'] = snp_dict['mapref_ref'].upper()
     
     ## update ST to ST ref if an ST maps to the locus ##
     if snp_dict['superts_ref'] == 'NA' and snp_dict['SToverlapalleles'] != 'NA':
-        snp_dict['supertsalleles'] = snp_dict['SToverlapalleles']
+        snp_dict['supertsalleles'] = snp_dict['SToverlapalleles'].upper()
    
     return snp_dict
 
@@ -67,7 +67,7 @@ def IndelError(snp_dict):
         return 'NA'
         
 
-def MrefSnvSuperTsIndel(snp_dict): # OK
+def MrefSnvSuperTsIndel(snp_dict):
     """
     frequency of sites where SuperTs gtype error
     due to a map-to-ref SNV called as an 
@@ -89,7 +89,7 @@ def MrefSnvSuperTsIndel(snp_dict): # OK
         return 'NA'
 
 
-def RefAlleleIncludedInSuperTsError(snp_dict): #OK
+def RefAlleleIncludedInSuperTsError(snp_dict):
     """
     when gtype called for both map-to-ref
     and SuperTranscripts, when SuperTs gtype error,
@@ -108,10 +108,10 @@ def RefAlleleIncludedInSuperTsError(snp_dict): #OK
         return 'NA'    
 
 
-def FalsePositiveIndel(snp_dict): #OK 
+def FalsePositiveIndel(snp_dict):
     """
-    frequency of false positives that
-    are called as indels
+    True == ST indel polymorphism at MR invariant site
+    False == ST call at invariant site != indel polymorphism
     """
     if len(Set(snp_dict['maprefalleles'].split(';'))) == 1:
         if snp_dict['supertsalleles'] != 'NA':
@@ -132,6 +132,8 @@ def Recall(snp_dict):
     determine if a called map-ref genotype, including
     fixed-alternative, is recovered by 
     the SuperTranscript approach
+    True == called MR genotype same as ST genotype
+    False == called MR genotype not recovered in ST
     """
     if snp_dict['maprefalleles'] != snp_dict['mapref_ref']:
         mapref_allele_set = Set(snp_dict['maprefalleles'].split(';'))
@@ -148,12 +150,14 @@ def HetRecall(snp_dict):
     """
     determine if a called map-ref het genotype
     is recovered by SuperTranscript approach
+    True == ST recovers MR het genotype
+    False == MR het genotype not recovered by ST
     """
     mapref_allele_set = Set(snp_dict['maprefalleles'].split(';'))
     superts_allele_set = Set(snp_dict['supertsalleles'].split(';'))
     if len(mapref_allele_set) == 2 and mapref_allele_set == superts_allele_set:
         return True
-    else:
+    elif len(mapref_allele_set) == 2 and mapref_allele_set != superts_allele_set:
         return False
 
     else:
@@ -162,15 +166,17 @@ def HetRecall(snp_dict):
 
 def FalsePositive(snp_dict):
     """
-    cases where no genotype, or a fixed alternative site
-    in map-to-ref is called as a bi-allelic het via
-    SuperTranscript method
+    True == MR invariant sites 
+    called as polymorphic in ST
+    False == MR invariant sites called as 
+    same genotype in ST 
+    used to estimate proportion of all MR negatives that yields positive ST results
     """
 
-    if snp_dict['supertsalleles'] =! 'NA':
+    if snp_dict['supertsalleles'] != 'NA':
         if len(Set(snp_dict['maprefalleles'].split(';'))) == 1 and len(Set(snp_dict['supertsalleles'].split(';'))) >= 2:
             return True
-        elif Set(snp_dict['maprefalleles'].split(';'))) == Set(snp_dict['supertsalleles'].split(';'))):
+        elif len(Set(snp_dict['maprefalleles'].split(';'))) == 1 and Set(snp_dict['maprefalleles'].split(';')) == Set(snp_dict['supertsalleles'].split(';')):
             return False
         else:
             return 'NA'
@@ -183,21 +189,17 @@ def FalseNegative(snp_dict):
     sites:
         -- no overlapping ST allele
         -- invariant ST and het MR
+    used to estimate proportion of positives that yield negative ST genotypes
     """
-    if snp_dict['maprefalleles'] != snp_dict['mapref_ref']:
-        refbase = False
-    else:
-        refbase = True
-    
-    if snp_dict['supertsalleles'] == 'NA':
+    if snp_dict['supertsalleles'] == 'NA' and len(Set(snp_dict['maprefalleles'].split(';'))) == 2:
         FN = True
     elif len(Set(snp_dict['supertsalleles'].split(';'))) == 1 and len(Set(snp_dict['maprefalleles'].split(';'))) == 2:
         FN = True
-    elif Set(snp_dict['supertsalleles'].split(';'))) == Set(snp_dict['maprefalleles'].split(';'))):
+    elif len(Set(snp_dict['maprefalleles'].split(';'))) == 2 and Set(snp_dict['supertsalleles'].split(';')) == Set(snp_dict['maprefalleles'].split(';')):
         FN = False
     else:
         FN = 'NA'
-    return FN,refbase
+    return FN
 
 if __name__=="__main__": 
     parser = argparse.ArgumentParser(description='Converts map-to-ref vcf file from RNA-seq data to exonic genotypes in bed format')
@@ -206,18 +208,18 @@ if __name__=="__main__":
     opts = parser.parse_args()
     
     table_corrected = open('corrected_%s' % opts.genotypes,'w')
-    qc_dict = {'fp_indel':{'fp_indel': 0,'counted': 0},
-               'err_snv2indel' : {'err_snv2indel': 0,'counted': 0},
-               'err_mrefincl' : {'err_mrefincl': 0,'counted': 0},
-               'precision' : {'precision': 0,'counted': 0},
-               'fn' : {'fn' : 0,'counted' : 0},
-               'fn_refbase_incl': {'fn_refbase_incl' : 0 , 'counted' : 0},
-               'fp' : {'fp' : 0,'counted' : 0},
-               'recall' : {'recall' : 0,'counted' : 0},
-               'het_recall' : {'het_recall' : 0,'counted' : 0}
-               'concordance' : {'concordance' : 0,'counted' : 0},
-               'fn_noalignment' : {'fn_noalignment' : 0,'counted' : 0}
-               }
+    qc_dict = {
+        'fp_indel':{'fp_indel': 0,'counted': 0},
+        'err_snv2indel' : {'err_snv2indel': 0,'counted': 0},
+        'err_mrefincl' : {'err_mrefincl': 0,'counted': 0},
+        'precision' : {'precision': 0,'counted': 0},
+        'fn' : {'fn' : 0,'counted' : 0},
+        'fp' : {'fp' : 0,'counted' : 0},
+        'recall' : {'recall' : 0,'counted' : 0},
+        'het_recall' : {'het_recall' : 0,'counted' : 0},
+        'concordance' : {'concordance' : 0,'counted' : 0},
+        'fn_noalignment' : {'fn_noalignment' : 0,'counted' : 0}
+        }
 
     fopen = open(opts.genotypes,'r')
     header_fields = fopen.readline().strip().split()
@@ -292,7 +294,7 @@ if __name__=="__main__":
         if fp == True:
             qc_dict['fp']['fp']+=1
             qc_dict['fp']['counted']+=1
-        elif fp = False:
+        elif fp == False:
             qc_dict['fp']['counted']+=1
         else:
             pass
@@ -310,26 +312,18 @@ if __name__=="__main__":
 
         ### false negative ###
         fn = FalseNegative(snp_dict)
-        if fn == True,False: # MR != refbase w/ no call
+        if fn == True: 
             qc_dict['fn']['fn']+=1
             qc_dict['fn']['counted']+=1
-            qc_dict['fn_refbase_incl']['fn']+=1
-            qc_dict['fn_refbase_incl']['counted']+=1
-        elif fn == True,True:
-            qc_dict['fn_refbase_incl']['fn']+=1
-            qc_dict['fn_refbase_incl']['counted']+=1 
-        elif fn == False,False:
+        elif fn == False:
             qc_dict['fn']['counted']+=1
-            qc_dict['fn_refbase_incl']['counted']+=1
-        elif fn == False,True:
-            qc_dict['fn_refbase_incl']['counted']+=1
               
 
-        if snp_dict['SToverlaps'] == 'NA':
+        if snp_dict['SToverlaps'] == 'NA' and fn == True:
                 qc_dict['fn_noalignment']['fn_noalignment']+=1
                 qc_dict['fn_noalignment']['counted']+=1
-            else:
-                qc_dict['fn_noalignment']['counted']+=1
+        elif snp_dict['SToverlaps'] != 'NA' and fn == True:
+            qc_dict['fn_noalignment']['counted']+=1
 
     fout= open('%s.concordancemetrics.tsv' % opts.genotypes[:-4],'w')
     

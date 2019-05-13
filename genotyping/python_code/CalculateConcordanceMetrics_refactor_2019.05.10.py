@@ -19,7 +19,7 @@ def ReplaceNaWithReferenceAllele(snp_dict):
 
 ##### Defining Metrics #####
 
-def BoolFlagGenotypeSetConcordance(snp_dict): #OK
+def BoolFlagGenotypeSetConcordance(snp_dict): 
     """
     assesses whether allele sets are the same
     for mapref and SuperTranscript based genotyping methods
@@ -32,7 +32,7 @@ def BoolFlagGenotypeSetConcordance(snp_dict): #OK
     else:
         return False
 
-def Precision(snp_dict): # OK
+def Precision(snp_dict):
     """
     proportion of called SuperTranscript
     genotypes that match map-to-ref
@@ -47,7 +47,7 @@ def Precision(snp_dict): # OK
     else:
         return 'NA'
 
-def IndelError(snp_dict): #OK 
+def IndelError(snp_dict):
     """
     frequency of sites where ST gtype
     error due to ST indel polymorphism
@@ -113,7 +113,7 @@ def FalsePositiveIndel(snp_dict): #OK
     frequency of false positives that
     are called as indels
     """
-    if len(snp_dict['maprefalleles'].split(';')) == 1:
+    if len(Set(snp_dict['maprefalleles'].split(';'))) == 1:
         if snp_dict['supertsalleles'] != 'NA':
             superts_allele_lengths = Set([len(allele) for allele in Set(snp_dict['supertsalleles'].split(';'))])
             if len(superts_allele_lengths) > 1:
@@ -127,7 +127,7 @@ def FalsePositiveIndel(snp_dict): #OK
         return 'NA'
 
 
-def Recall(snp_dict): #OK
+def Recall(snp_dict): 
     """
     determine if a called map-ref genotype, including
     fixed-alternative, is recovered by 
@@ -144,7 +144,7 @@ def Recall(snp_dict): #OK
     else:
         return 'NA'
 
-def HetRecall(snp_dict): #OK
+def HetRecall(snp_dict): 
     """
     determine if a called map-ref het genotype
     is recovered by SuperTranscript approach
@@ -159,86 +159,45 @@ def HetRecall(snp_dict): #OK
     else:
         return 'NA'
 
-### GOT HERE!!##
-def FalsePositive(snp_dict):
-    if snp_dict['maprefalleles'] == 'NA' and snp_dict['supertsalleles'] != 'NA':
-        return True
-    elif snp_dict['maprefalleles'] != 'NA' and len(snp_dict['maprefalleles'].split(';')) == 1 and len(snp_dict['supertsalleles'].split(';')) > 1:
-        return True
-    else:
-        return False
 
-def FalsePositiveHet(snp_dict):
+def FalsePositive(snp_dict):
     """
     cases where no genotype, or a fixed alternative site
     in map-to-ref is called as a bi-allelic het via
     SuperTranscript method
     """
-    if snp_dict['maprefalleles'] == 'NA' or len(snp_dict['maprefalleles'].split(';')) == 1:
-        #if snp_dict['supertsalleles'] != 'NA' and len(snp_dict['supertsalleles'].split(';')) == 2:
-        if len(snp_dict['supertsalleles'].split(';')) == 2:
-            return True
-        else:
-            return False
-    else:
-        return 'NA'
 
-#def FalsePositiveNatoHet(snp_dict):
-    #if snp_dict['maprefalleles'] == 'NA':
-        #if snp_dict['supertsalleles'] != 'NA' and len(snp_dict['supertsalleles'].split(';')) == 2:
-            #return True
-        #else:
-            #return False
-    #else:
-        #return 'NA'
-
-def FalsePositiveNaToFixedAlt(snp_dict):
-    if snp_dict['maprefalleles'] == 'NA':
-        if snp_dict['supertsalleles'] != 'NA' and len(snp_dict['supertsalleles'].split(';')) == 1:
+    if snp_dict['supertsalleles'] =! 'NA':
+        if len(Set(snp_dict['maprefalleles'].split(';'))) == 1 and len(Set(snp_dict['supertsalleles'].split(';'))) >= 2:
             return True
-        else:
+        elif Set(snp_dict['maprefalleles'].split(';'))) == Set(snp_dict['supertsalleles'].split(';'))):
             return False
+        else:
+            return 'NA'
     else:
         return 'NA'
 
 
 def FalseNegative(snp_dict):
     """
-    sites where there is a map-to-ref genotype
-    call and no genotype call in SuperTranscripts
+    sites:
+        -- no overlapping ST allele
+        -- invariant ST and het MR
     """
-    if snp_dict['maprefalleles'] != 'NA':
-        if snp_dict['supertsalleles'] == 'NA':
-            return True
-        else:
-            return False
+    if snp_dict['maprefalleles'] != snp_dict['mapref_ref']:
+        refbase = False
     else:
-         return 'NA'
-
-
-def FalseNegativeHet(snp_dict):
-    """
-    cases where a map-ref het is called but
-    in SuperTranscript neither a het call
-    nor a fixed alternative allele gtype
-    """
-    st_allele_lengths = Set()
-    if snp_dict['supertsalleles'] != 'NA':
-        for allele in snp_dict['supertsalleles'].split(';'):
-            st_allele_lengths.add(len(allele))        
-
-    if len(Set(snp_dict['maprefalleles'].split(';'))) == 2:
-        if len(Set(snp_dict['supertsalleles'].split(';'))) == 1: # note this includes NAs
-            return True
-        elif len(Set(snp_dict['supertsalleles'].split(';'))) > 2: # considers multi-allelic fns
-            return True
-        elif snp_dict['supertsalleles'] != 'NA' and len(st_allele_lengths) > 1:
-            return True
-        else:
-            return False
+        refbase = True
+    
+    if snp_dict['supertsalleles'] == 'NA':
+        FN = True
+    elif len(Set(snp_dict['supertsalleles'].split(';'))) == 1 and len(Set(snp_dict['maprefalleles'].split(';'))) == 2:
+        FN = True
+    elif Set(snp_dict['supertsalleles'].split(';'))) == Set(snp_dict['maprefalleles'].split(';'))):
+        FN = False
     else:
-        return 'NA'
-        
+        FN = 'NA'
+    return FN,refbase
 
 if __name__=="__main__": 
     parser = argparse.ArgumentParser(description='Converts map-to-ref vcf file from RNA-seq data to exonic genotypes in bed format')
@@ -247,21 +206,17 @@ if __name__=="__main__":
     opts = parser.parse_args()
     
     table_corrected = open('corrected_%s' % opts.genotypes,'w')
-    qc_dict = {'fp_natofixedalt':{'fp_natofixedalt':0,'counted':0},
-               'fp_natohet':{'fp_natohet':0,'counted':0},
-               'err_multisuper':{'err_multisuper':0,'counted':0},
-               'fp_indel':{'fp_indel':0,'counted':0},
-               'err_snv2indel':{'err_snv2indel':0,'counted':0},
-               'err_mrefincl':{'err_mrefincl':0,'counted':0},
-               'specificity':{'specificity':0,'counted':0},
-               'fn_het':{'fn_het':0,'counted':0},
-               'fn':{'fn':0,'counted':0},
-               'fp_het':{'fp_het':0,'counted':0},
-               'fp':{'fp':0,'counted':0},
-               'het_recall':{'het_recall':0,'counted':0},
-               'recall':{'recall':0,'counted':0},
-               'concordance':{'concordance':0,'counted':0},
-               'fn_noalignment':{'fn_noalignment':0,'counted':0}
+    qc_dict = {'fp_indel':{'fp_indel': 0,'counted': 0},
+               'err_snv2indel' : {'err_snv2indel': 0,'counted': 0},
+               'err_mrefincl' : {'err_mrefincl': 0,'counted': 0},
+               'precision' : {'precision': 0,'counted': 0},
+               'fn' : {'fn' : 0,'counted' : 0},
+               'fn_refbase_incl': {'fn_refbase_incl' : 0 , 'counted' : 0},
+               'fp' : {'fp' : 0,'counted' : 0},
+               'recall' : {'recall' : 0,'counted' : 0},
+               'het_recall' : {'het_recall' : 0,'counted' : 0}
+               'concordance' : {'concordance' : 0,'counted' : 0},
+               'fn_noalignment' : {'fn_noalignment' : 0,'counted' : 0}
                }
 
     fopen = open(opts.genotypes,'r')
@@ -273,7 +228,7 @@ if __name__=="__main__":
         snp_dict =  ReplaceNaWithReferenceAllele(dict(zip(fields,line_list)))
         table_corrected.write('%s\n' % '\t'.join([snp_dict[field] for field in header_fields]))
 
-        ### concordance ### OK
+        ### concordance ### 
         concordant = BoolFlagGenotypeSetConcordance(snp_dict)
         if concordant == True:
             qc_dict['concordance']['concordance'] +=1
@@ -281,7 +236,7 @@ if __name__=="__main__":
         else:
             qc_dict['concordance']['counted']+=1
         
-        #### superts error with mapref allele included ### OK
+        #### superts error with mapref allele included ### 
         mrefincl = RefAlleleIncludedInSuperTsError(snp_dict)
         if mrefincl == True:
             qc_dict['err_mrefincl']['err_mrefincl']+=1
@@ -301,13 +256,13 @@ if __name__=="__main__":
         else:
             pass
 
-        ### specificity ###
-        specificity = Precision(snp_dict)
-        if specificity == True:
-            qc_dict['specificity']['specificity'] +=1
-            qc_dict['specificity']['counted']+=1
-        elif specificity == False:
-            qc_dict['specificity']['counted']+=1
+        ### precision ###
+        precision = Precision(snp_dict)
+        if precision == True:
+            qc_dict['precision']['precision'] +=1
+            qc_dict['precision']['counted']+=1
+        elif precision == False:
+            qc_dict['precision']['counted']+=1
         else:
             pass
 
@@ -331,13 +286,16 @@ if __name__=="__main__":
         else:
             pass
 
-        ### false positive ###
+        ### false positive ##
+        #
         fp = FalsePositive(snp_dict)
         if fp == True:
             qc_dict['fp']['fp']+=1
             qc_dict['fp']['counted']+=1
-        else:
+        elif fp = False:
             qc_dict['fp']['counted']+=1
+        else:
+            pass
 
         ### false positives as indels ###
         fpindel = FalsePositiveIndel(snp_dict)
@@ -349,71 +307,29 @@ if __name__=="__main__":
         else:
             pass
 
-        ### fp hets ###
-        fphet = FalsePositiveHet(snp_dict)
-        if fphet == True:
-            qc_dict['fp_het']['fp_het']+=1
-            qc_dict['fp_het']['counted']+=1
-        elif fphet == False:
-            qc_dict['fp_het']['counted']+=1
-        else:
-            pass 
-        
-        ### fp na to het ###
-        fpnatohet = FalsePositiveNatoHet(snp_dict)
-        if fpnatohet == True:
-            qc_dict['fp_natohet']['fp_natohet']+=1
-            qc_dict['fp_natohet']['counted']+=1
-        elif fpnatohet == False:
-            qc_dict['fp_natohet']['counted']+=1
-        else:
-            pass
-
-        ### fp na to fixed alt ###
-        fpnatofixedalt = FalsePositiveNaToFixedAlt(snp_dict)
-        if fpnatofixedalt == True:
-            qc_dict['fp_natofixedalt']['fp_natofixedalt']+=1
-            qc_dict['fp_natofixedalt']['counted']+=1
-        elif fpnatofixedalt == False:
-            qc_dict['fp_natofixedalt']['counted']+=1
-        else:
-            pass
 
         ### false negative ###
         fn = FalseNegative(snp_dict)
-        if fn == True:
+        if fn == True,False: # MR != refbase w/ no call
             qc_dict['fn']['fn']+=1
             qc_dict['fn']['counted']+=1
-            if snp_dict['SToverlaps'] == 'NA':
+            qc_dict['fn_refbase_incl']['fn']+=1
+            qc_dict['fn_refbase_incl']['counted']+=1
+        elif fn == True,True:
+            qc_dict['fn_refbase_incl']['fn']+=1
+            qc_dict['fn_refbase_incl']['counted']+=1 
+        elif fn == False,False:
+            qc_dict['fn']['counted']+=1
+            qc_dict['fn_refbase_incl']['counted']+=1
+        elif fn == False,True:
+            qc_dict['fn_refbase_incl']['counted']+=1
+              
+
+        if snp_dict['SToverlaps'] == 'NA':
                 qc_dict['fn_noalignment']['fn_noalignment']+=1
                 qc_dict['fn_noalignment']['counted']+=1
             else:
                 qc_dict['fn_noalignment']['counted']+=1
-        elif fn == False:
-            qc_dict['fn']['counted']+=1
-        else:
-            pass
-
-        ### false negative het ###
-        fnhet = FalseNegativeHet(snp_dict)
-        if fnhet == True:
-            qc_dict['fn_het']['fn_het']+=1
-            qc_dict['fn_het']['counted']+=1
-        elif fnhet == False:
-            qc_dict['fn_het']['counted']+=1
-        else:
-            pass
-
-        ### multi superts alignment error ###
-        errmultsuper = MultiSuperError(snp_dict)
-        if errmultsuper == True:
-            qc_dict['err_multisuper']['err_multisuper']+=1
-            qc_dict['err_multisuper']['counted']+=1
-        elif errmultsuper == False:
-            qc_dict['err_multisuper']['counted']+=1
-        else:
-            pass
-    print qc_dict
 
     fout= open('%s.concordancemetrics.tsv' % opts.genotypes[:-4],'w')
     

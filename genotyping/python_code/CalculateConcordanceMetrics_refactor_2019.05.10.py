@@ -183,6 +183,19 @@ def FalsePositive(snp_dict):
     else:
         return 'NA'
 
+def FalsePositiveHetSnv(snp_dict):
+    if snp_dict['supertsalleles'] != 'NA':
+        superts_allele_lengths = Set([len(allele) for allele in Set(snp_dict['supertsalleles'].split(';'))])
+        if len(Set(snp_dict['maprefalleles'].split(';'))) == 1:
+            if len(superts_allele_lengths) == 1 and len(Set(snp_dict['supertsalleles'].split(';'))) == 2:
+                return True
+            else:
+                return False
+    else:
+        return 'NA'
+        
+
+
 
 def FalseNegative(snp_dict):
     """
@@ -215,6 +228,7 @@ if __name__=="__main__":
         'precision' : {'precision': 0,'counted': 0},
         'fn' : {'fn' : 0,'counted' : 0},
         'fp' : {'fp' : 0,'counted' : 0},
+        'fp_het_snv' : {'fp_het_snv' : 0,'counted' : 0},
         'recall' : {'recall' : 0,'counted' : 0},
         'het_recall' : {'het_recall' : 0,'counted' : 0},
         'concordance' : {'concordance' : 0,'counted' : 0},
@@ -299,6 +313,15 @@ if __name__=="__main__":
         else:
             pass
 
+        ### fp het snv ###
+        fphetsnv = FalsePositiveHetSnv(snp_dict)
+        if fphetsnv == True:
+            qc_dict['fp_het_snv']['fp_het_snv']+=1
+            qc_dict['fp_het_snv']['counted']+=1
+        elif fphetsnv == False:
+            qc_dict['fp_het_snv']['counted']+=1
+        else:
+            pass
         ### false positives as indels ###
         fpindel = FalsePositiveIndel(snp_dict)
         if fpindel == True:

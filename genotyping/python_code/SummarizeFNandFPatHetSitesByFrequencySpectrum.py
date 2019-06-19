@@ -1,5 +1,5 @@
 import argparse
-from CalculateConcordanceMetrics_modular import FalseNegativeHet,BoolFlagGenotypeSetConcordance
+from CalculateConcordanceMetrics_modular import FalseNegative,BoolFlagGenotypeSetConcordance
 from sets import Set
 
 def ExtractMafIfHet(mr_dict,ploidy):
@@ -14,17 +14,17 @@ def ExtractMafIfHet(mr_dict,ploidy):
 
     return hetflag,maf
 
-def EvaluteSuperTscriptAtMapRefHetSite(snp_dict):
+def EvaluateSuperTscriptAtMapRefHetSite(snp_dict):
     if snp_dict['supertsalleles'] == 'NA':
         stclass = 'FN'
-    elif len(snp_dict['supertsalleles'].split(';')) ==1:
+    elif len(snp_dict['supertsalleles'].split(';')) == 1:
         stclass = 'FN'
     elif Set(snp_dict['supertsalleles']) == Set(snp_dict['maprefalleles']):
         stclass='concordant'
-    elif Set(snp_dict['supertsalleles']) != Set(snp_dict['maprefalleles']) and len(snp_dict['supertsalleles'].split(';')) == 2:
-        stclass = 'FP'
-    elif len(snp_dict['supertsalleles'].split(';')) > 2:
-        stclass = 'FP'
+    elif len(snp_dict['supertsalleles'].split(';')) > 2 or Set(snp_dict['supertsalleles']) != Set(snp_dict['maprefalleles']):
+        stclass = 'error'
+    else:
+        stclass = 'NA'
     return stclass
 
 
@@ -54,9 +54,11 @@ if __name__=="__main__":
         line_list = line.strip().split('\t')
         snp_dict =  dict(zip(intersect_fields,line_list))
         if len(snp_dict['maprefalleles'].split(';')) == 2:
-            if len(snp_dict['genomicpositions'].split(';')) ==1:
-                maf = mr_het_maf_dict[snp_dict['genomicpositions']]
-                snpclass = EvaluteSuperTscriptAtMapRefHetSite(snp_dict)
+            maf = mr_het_maf_dict[snp_dict['genomicpositions']]
+            snpclass = EvaluateSuperTscriptAtMapRefHetSite(snp_dict)
+            if snpclass == 'NA':
+                print snp_dict
+            else:
                 summary_out.write('%s\t%s\t%s\t%s\n' % (snp_dict['genomicpositions'].split(':')[0],snp_dict['genomicpositions'].split(':')[1],maf,snpclass))
  
     summary_out.close()

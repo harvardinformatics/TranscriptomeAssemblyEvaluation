@@ -37,7 +37,7 @@ fields = fopen.readline().strip().split('\t')
 statsout = open('position_ranksumtest_%s.tsv' % sid,'w')
 
 
-fout = open('SuperTsErrors_%s.tsv' % sid,'w')
+fout = open('SuperTsErrorsPositionalInfo_%s.tsv' % sid,'w')
 fout.write('supertsid\td2end\treldist2end\tnormd2mid\n')
 for line in fopen:
     linelist = line.strip().split('\t')
@@ -45,7 +45,7 @@ for line in fopen:
     ref_alleles = Set(linedict['maprefalleles'].split(';'))
     st_alleles = Set(linedict['supertsalleles'].split(';'))
 
-    if ';' not in linedict['supertspositions'] and 'NA' not in linedict['supertsalleles']:
+    if ';' not in linedict['supertspositions'] and linedict['supertspositions'] != 'NA' and 'NA' not in linedict['supertsalleles']:
         if ref_alleles != st_alleles:
             st_length = st_length_dict[linedict['supertspositions'].split(':')[0]]
             st_error_pos =  int(linedict['supertspositions'].split(':')[1])

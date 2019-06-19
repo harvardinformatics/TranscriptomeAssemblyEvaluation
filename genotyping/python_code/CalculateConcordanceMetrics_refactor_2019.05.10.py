@@ -145,10 +145,10 @@ def Recall(snp_dict):
     else:
         return 'NA'
 
-def RecallNoFN(snp_dict):
+def RecallNoNA(snp_dict):
     mapref_allele_set = Set(snp_dict['maprefalleles'].split(';'))
     superts_allele_set = Set(snp_dict['supertsalleles'].split(';'))
-    if superts_allele_set != Set('NA'):
+    if superts_allele_set != Set(['NA']):
         if len(mapref_allele_set) == 2:
             if mapref_allele_set == superts_allele_set:
                 return True
@@ -207,9 +207,6 @@ def FalsePositiveHetSnv(snp_dict):
     else:
         return 'NA'
         
-
-
-
 def FalseNegative(snp_dict):
     """
     sites:
@@ -227,6 +224,18 @@ def FalseNegative(snp_dict):
         FN = 'NA'
     return FN
 
+def FalseNegativeNoNA(snp_dict):
+    if snp_dict['supertsalleles'] != 'NA' and len(Set(snp_dict['maprefalleles'].split(';'))) == 2:
+        if len(Set(snp_dict['supertsalleles'].split(';'))) == 1:
+            FN = True
+        elif len(Set(snp_dict['maprefalleles'].split(';'))) == 2 and Set(snp_dict['supertsalleles'].split(';')) == Set(snp_dict['maprefalleles'].split(';')):
+            FN = False
+        else:
+            FN = 'NA'
+    else:
+        FN = 'NA'
+    return FN        
+
 if __name__=="__main__": 
     parser = argparse.ArgumentParser(description='Converts map-to-ref vcf file from RNA-seq data to exonic genotypes in bed format')
     parser.add_argument('-gt','--gtable',dest='genotypes',type=str,help='table of mapref and superts genotype intersections')
@@ -235,7 +244,8 @@ if __name__=="__main__":
     
     table_corrected = open('corrected_%s' % opts.genotypes,'w')
     qc_dict = {
-        'recall_no_fn': {'recall_no_fn': 0,'counted': 0},
+        'fn_no_na': {'fn_no_na': 0, 'counted': 0},
+        'recall_no_na': {'recall_no_na': 0,'counted': 0},
         'fp_indel':{'fp_indel': 0,'counted': 0},
         'err_snv2indel' : {'err_snv2indel': 0,'counted': 0},
         'err_mrefincl' : {'err_mrefincl': 0,'counted': 0},
@@ -308,17 +318,17 @@ if __name__=="__main__":
             qc_dict['recall']['counted']+=1
         else:
             pass
-        ### recall no FN ###
-        recall_nofn = RecallNoFN(snp_dict)
-        if recall_nofn == True:
-            qc_dict['recall_no_fn']['recall_no_fn']+=1
-            qc_dict['recall_no_fn']['counted']+=1
-        elif recall_nofn == False:
-            qc_dict['recall_no_fn']['counted']+=1
+
+        ### recall no NA ###
+        recall_nona = RecallNoNA(snp_dict)
+        if recall_nona == True:
+            qc_dict['recall_no_na']['recall_no_na']+=1
+            qc_dict['recall_no_na']['counted']+=1
+        elif recall_nona == False:
+            qc_dict['recall_no_na']['counted']+=1
         else:
             pass
             
-
         ### het recall ###
         hetrecall = HetRecall(snp_dict)
         if hetrecall == True:
@@ -379,10 +389,20 @@ if __name__=="__main__":
         elif snp_dict['SToverlaps'] != 'NA' and fn == True:
             qc_dict['fn_noalignment']['counted']+=1
 
+        ### FN no NA ###
+        fnnona = FalseNegativeNoNA(snp_dict)
+        if fnnona == True:
+            qc_dict['fn_no_na']['fn_no_na']+=1
+            qc_dict['fn_no_na']['counted']+=1
+        elif fnnona == False:
+            qc_dict['fn_no_na']['counted']+=1
+        
+
         table_corrected.write('%s\n' % '\t'.join([snp_dict[field] for field in list(header_fields + ['concordant','FP','FN'])]))
 
     fout= open('%s.concordancemetrics.tsv' % opts.genotypes[:-4],'w')
     
+    print qc_dict
     qc_keys =  qc_dict.keys()
     qc_keys.sort()
     header='%s\tSample\n' % '\t'.join(qc_keys)

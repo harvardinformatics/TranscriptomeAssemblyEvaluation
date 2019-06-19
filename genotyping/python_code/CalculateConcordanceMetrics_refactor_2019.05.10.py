@@ -37,9 +37,9 @@ def Precision(snp_dict):
     proportion of called SuperTranscript
     genotypes that match map-to-ref
     """
-    if snp_dict['supertsalleles'] != 'NA':
-        mapref_allele_set = Set(snp_dict['maprefalleles'].split(';'))
-        superts_allele_set = Set(snp_dict['supertsalleles'].split(';'))
+    mapref_allele_set = Set(snp_dict['maprefalleles'].split(';'))
+    superts_allele_set = Set(snp_dict['supertsalleles'].split(';'))
+    if snp_dict['supertsalleles'] != 'NA' and len(superts_allele_set) > 1:
         if mapref_allele_set == superts_allele_set:
             return True
         else:
@@ -129,20 +129,33 @@ def FalsePositiveIndel(snp_dict):
 
 def Recall(snp_dict): 
     """
-    determine if a called map-ref genotype, including
-    fixed-alternative, is recovered by 
-    the SuperTranscript approach
+    determine if a called map-ref het genotype
+    is recovered by the SuperTranscript approach
     True == called MR genotype same as ST genotype
     False == called MR genotype not recovered in ST
     """
-    if snp_dict['maprefalleles'] != snp_dict['mapref_ref']:
-        mapref_allele_set = Set(snp_dict['maprefalleles'].split(';'))
-        superts_allele_set = Set(snp_dict['supertsalleles'].split(';'))
+    mapref_allele_set = Set(snp_dict['maprefalleles'].split(';'))
+    superts_allele_set = Set(snp_dict['supertsalleles'].split(';'))
+    if len(mapref_allele_set) == 2:
         if mapref_allele_set == superts_allele_set:
             return True
         else:
             return False
 
+    else:
+        return 'NA'
+
+def RecallNoFN(snp_dict):
+    mapref_allele_set = Set(snp_dict['maprefalleles'].split(';'))
+    superts_allele_set = Set(snp_dict['supertsalleles'].split(';'))
+    if superts_allele_set != Set('NA'):
+        if len(mapref_allele_set) == 2:
+            if mapref_allele_set == superts_allele_set:
+                return True
+            else:
+                return False
+        else:
+            return 'NA'
     else:
         return 'NA'
 
@@ -222,6 +235,7 @@ if __name__=="__main__":
     
     table_corrected = open('corrected_%s' % opts.genotypes,'w')
     qc_dict = {
+        'recall_no_fn': {'recall_no_fn': 0,'counted': 0},
         'fp_indel':{'fp_indel': 0,'counted': 0},
         'err_snv2indel' : {'err_snv2indel': 0,'counted': 0},
         'err_mrefincl' : {'err_mrefincl': 0,'counted': 0},
@@ -237,20 +251,23 @@ if __name__=="__main__":
 
     fopen = open(opts.genotypes,'r')
     header_fields = fopen.readline().strip().split()
-    table_corrected.write('%s\n' % '\t'.join(header_fields))
+    table_corrected.write('%s\tconcordant\tFP\tFN\n' % '\t'.join(header_fields))
 
     for line in fopen:
         line_list = line.strip().split('\t')
         snp_dict =  ReplaceNaWithReferenceAllele(dict(zip(fields,line_list)))
-        table_corrected.write('%s\n' % '\t'.join([snp_dict[field] for field in header_fields]))
-
+        snp_dict['FP'] = 'NA'
+        snp_dict['FN'] = 'NA'
+       
         ### concordance ### 
         concordant = BoolFlagGenotypeSetConcordance(snp_dict)
         if concordant == True:
             qc_dict['concordance']['concordance'] +=1
             qc_dict['concordance']['counted']+=1
+            snp_dict['concordant'] = 'T'
         else:
             qc_dict['concordance']['counted']+=1
+            snp_dict['concordant'] = 'F'
         
         #### superts error with mapref allele included ### 
         mrefincl = RefAlleleIncludedInSuperTsError(snp_dict)
@@ -291,6 +308,16 @@ if __name__=="__main__":
             qc_dict['recall']['counted']+=1
         else:
             pass
+        ### recall no FN ###
+        recall_nofn = RecallNoFN(snp_dict)
+        if recall_nofn == True:
+            qc_dict['recall_no_fn']['recall_no_fn']+=1
+            qc_dict['recall_no_fn']['counted']+=1
+        elif recall_nofn == False:
+            qc_dict['recall_no_fn']['counted']+=1
+        else:
+            pass
+            
 
         ### het recall ###
         hetrecall = HetRecall(snp_dict)
@@ -308,8 +335,10 @@ if __name__=="__main__":
         if fp == True:
             qc_dict['fp']['fp']+=1
             qc_dict['fp']['counted']+=1
+            snp_dict['FP'] = 'T'
         elif fp == False:
             qc_dict['fp']['counted']+=1
+            snp_dict['FP'] = 'F'
         else:
             pass
 
@@ -338,8 +367,10 @@ if __name__=="__main__":
         if fn == True: 
             qc_dict['fn']['fn']+=1
             qc_dict['fn']['counted']+=1
+            snp_dict['FN'] = 'T'
         elif fn == False:
             qc_dict['fn']['counted']+=1
+            snp_dict['FN'] = 'F'
               
 
         if snp_dict['SToverlaps'] == 'NA' and fn == True:
@@ -347,6 +378,8 @@ if __name__=="__main__":
                 qc_dict['fn_noalignment']['counted']+=1
         elif snp_dict['SToverlaps'] != 'NA' and fn == True:
             qc_dict['fn_noalignment']['counted']+=1
+
+        table_corrected.write('%s\n' % '\t'.join([snp_dict[field] for field in list(header_fields + ['concordant','FP','FN'])]))
 
     fout= open('%s.concordancemetrics.tsv' % opts.genotypes[:-4],'w')
     

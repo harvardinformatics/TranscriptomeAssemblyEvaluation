@@ -22,10 +22,11 @@ fout.write('supertsid\tnum_gt_errors\tperr\n')
 for line in fopen:
     linelist = line.strip().split('\t')
     linedict =  dict(zip(fields,linelist))
+    #print linedict
     ref_alleles = Set(linedict['maprefalleles'].split(';'))
     st_alleles = Set(linedict['supertsalleles'].split(';'))
 
-    if ';' not in linedict['supertspositions'] and 'NA' not in linedict['supertsalleles']:
+    if ';' not in linedict['supertspositions'] and linedict['supertspositions'] != 'NA' and 'NA' not in linedict['supertsalleles']:
         if ref_alleles != st_alleles:
             st_error_pos =  int(linedict['supertspositions'].split(':')[1])
             error_dict[linedict['supertspositions'].split(':')[0]]+=1

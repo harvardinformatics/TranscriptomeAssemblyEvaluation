@@ -5,17 +5,17 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(description='generic filtering on protein coding database hits')
     parser.add_argument('-input','--unfiltered_table',dest='tablein',type=str,help='table to filter on transcript hits')
     parser.add_argument('-sep','--field_separator',dest='sep',type=str,help='separator definiition,using codes: TAB, SPACE, COMMA')
-    parser.add_argument('-pcod','--protein_coding_entries',dest='pcoding',type=str,help='file of entries that are protein coding')
+    parser.add_argument('-k','--keep-list',dest='keepers',type=str,help='file of entries that are protein coding')
     parser.add_argument('-c','--target_column',dest='column',type=int,help = 'nonzero indexed column where target in dbase found')
     parser.add_argument('-header','--header_present',action='store_true',help='boolean flag to indicate if header')
     parser.add_argument('-pfix','--output_prefix',dest='prefix',type=str,help='prefix for outfile')
     opts = parser.parse_args()
     
     num_filtered_out = 0
-    pcod_list = []
-    pcod = open(opts.pcoding,'r')
-    for line in pcod:
-        pcod_list.append(line.strip())
+    keepers_list = []
+    keeper_handle = open(opts.keepers,'r')
+    for line in keeper_handle:
+        keeper_list.append(line.strip())
 
     sep_dict = {'TAB':'\t','SPACE': ' ','COMMA':','}
     sep = sep_dict[opts.sep]

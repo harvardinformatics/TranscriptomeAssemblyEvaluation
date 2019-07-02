@@ -1,5 +1,4 @@
 import argparse
-#'/n/holylfs/LABS/informatics/adamf/DeNovoTranscriptomeEvaluation/reference_transcript_coverage/mus_proteincoding_ts.ids','r')
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='generic filtering on protein coding database hits')

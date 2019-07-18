@@ -1,6 +1,6 @@
 import argparse
 from numpy import mean,median
-from interval import interval, inf, imath
+#from interval import interval, inf, imath
 from collections import defaultdict
 
 psl_keys=['matches','misMatches','repMatches','nCount','qNumInsert','qBaseInsert','tNumInsert','tBaseInsert','strand','qName','qSize','qStart','qEnd','tName','tSize','tStart','tEnd','blockCount','blockSizes','qStarts','tStarts']
@@ -33,7 +33,7 @@ def psl_addstats(psl_dict):
 
     return psl_dict
     
-def build_alignment_intervals(psl_dict):
+#def build_alignment_intervals(psl_dict):
     """
     build list of intervals, where the interval
     start and end are the bounding coordinates
@@ -41,22 +41,22 @@ def build_alignment_intervals(psl_dict):
     object, adds the interval list and merged interval
     to psl_dict and returns updated psl_dict
     """
-    block_intervals=[]
-    for i in range(int(psl_dict['blockCount'])):
-        interval_start=int(psl_dict['tStarts'].split(',')[i])
-        interval_end=int(psl_dict['tStarts'].split(',')[i]) + int(psl_dict['blockSizes'].split(',')[i])
-        new_interval=interval[interval_start,interval_end]
-        block_intervals.append(new_interval)
+#    block_intervals=[]
+#    for i in range(int(psl_dict['blockCount'])):
+#        interval_start=int(psl_dict['tStarts'].split(',')[i])
+#        interval_end=int(psl_dict['tStarts'].split(',')[i]) + int(psl_dict['blockSizes'].split(',')[i])
+#        new_interval=interval[interval_start,interval_end]
+#        block_intervals.append(new_interval)
 
-    merged_interval=interval()
-    for newinterval in block_intervals:
-        merged_interval = merged_interval | newinterval
+#    merged_interval=interval()
+#    for newinterval in block_intervals:
+#        merged_interval = merged_interval | newinterval
 
-    psl_dict['interval_list']=block_intervals
-    psl_dict['merged_interval']=merged_interval
-    psl_dict['coverage_from_interval']=calculate_target_coverage(merged_interval,psl_dict['tSize'])
+#    psl_dict['interval_list']=block_intervals
+#    psl_dict['merged_interval']=merged_interval
+#    psl_dict['coverage_from_interval']=calculate_target_coverage(merged_interval,psl_dict['tSize'])
 
-    return psl_dict
+#    return psl_dict
 
 def calculate_target_coverage(intervals,targetlength):
     bases=0
@@ -72,6 +72,7 @@ if __name__=="__main__":
     parser.add_argument('-refmap','--reference-gene-ts-map',type=str,dest='refmap',help='mappings of reference tscripts to genes')
     parser.add_argument('-c','--assembly-contig-file',type=str,dest='contigs',help='list of de novo assembly contig ids')
     parser.add_argument('-mapout','--gene_transcript_map_out',dest='outmap',type=str,help='output gene transcript map')
+    parser.add_argument('-nogenes','--no-assembly-gene-clusters',dest='nogenes',action='store_true',help='assembler without putative genes')
     opts = parser.parse_args()
 
     contigs_handle = open(opts.contigs,'r')
@@ -92,7 +93,6 @@ if __name__=="__main__":
             # this strips the suffix off of Ensembl CDS entries #
             # causing mismatch with transcript ids #
             hit_dict['tName']=hit_dict['tName'].split('.')[0] 
-            hit_dict=build_alignment_intervals(hit_dict)
             if hit_dict['qName'] in queries_to_targets:
                 if hit_dict['target_coverage'] > queries_to_targets[hit_dict['qName']]['target_coverage']:
                     queries_to_targets[hit_dict['qName']]['tName'] = hit_dict['tName']
@@ -107,8 +107,10 @@ if __name__=="__main__":
         if contig in queries_to_targets:
             mapout.write('%s\t%s\n' % (refmap[queries_to_targets[contig]['tName']],contig))
         else:
-            mapout.write('%s\t%s\n' % ('_'.join(contig.split('_')[:-1]),contig))
-
+            if opts.nogenes == False:
+                mapout.write('%s\t%s\n' % ('_'.join(contig.split('_')[:-1]),contig))
+            else:
+                mapout.write('%s\t%s\n' % (contig,contig))
     mapout.close()
     
                     
